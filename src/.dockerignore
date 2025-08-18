@@ -1,0 +1,25 @@
+# Build artifacts
+bin/
+obj/
+
+# IDE folders
+.vs/
+.idea/
+
+# User-specific files
+*.csproj.user
+*.suo
+*.user
+*.log
+
+# Solution and markdown files (optional)
+*.sln
+*.md
+
+# Backup and temp files
+*.bak
+*.swp
+*.tmp
+
+# Git folder (not needed in Docker context)
+.git/
