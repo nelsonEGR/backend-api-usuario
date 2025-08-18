@@ -1,10 +1,14 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /app
+WORKDIR /app/src
 
-COPY . ./  # Copia el contenido actual de src/
-RUN dotnet restore "api.csproj"
-RUN dotnet publish "api.csproj" -c Release -o out
+# Copiar csproj y restaurar
+COPY src/*.csproj ./
+RUN dotnet restore
+
+# Copiar todo el código y publicar
+COPY src/. ./
+RUN dotnet publish -c Release -o /app/out
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
