@@ -2,15 +2,17 @@
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var env = builder.Environment;
 
-// 1. Configurar Kestrel para el puerto que asigna Render
-var portEnv = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-if (!int.TryParse(portEnv, out var portNumber))
-    portNumber = 8080;
-builder.WebHost.ConfigureKestrel(options =>
+// 1. Configurar Kestrel SOLO si Render expone PORT
+var portEnv = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var portNumber))
 {
-    options.ListenAnyIP(portNumber);
-});
+    builder.WebHost.ConfigureKestrel(options =>
+    {
+        options.ListenAnyIP(portNumber);
+    });
+}
 
 // 2. Registrar servicios
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -34,7 +36,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// 5. Health check en raíz para que Render confirme que la app está viva
+// 5. Health check en raíz
 app.MapGet("/", () => Results.Ok("API corriendo 🎉"));
 
 // 6. Autorización y controladores
