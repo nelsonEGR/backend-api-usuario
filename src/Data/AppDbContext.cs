@@ -23,7 +23,7 @@ namespace api_usuario.Data
             modelBuilder.Entity<Usuario>().Property(u => u.FechaNacimiento).HasColumnName("fecha_nacimiento");
             modelBuilder.Entity<Usuario>().Property(u => u.Genero).HasColumnName("genero");
             modelBuilder.Entity<Usuario>().Property(u => u.Estado).HasColumnName("estado");
-            modelBuilder.Entity<Usuario>().Property(u => u.FechaAlta).HasColumnName("fecha_alta");
+            modelBuilder.Entity<Usuario>().Property(u => u.FechaAlta).HasColumnName("fecha_alta").HasDefaultValueSql("CURRENT_TIMESTAMP").ValueGeneratedOnAdd();
         }
     }
 }
