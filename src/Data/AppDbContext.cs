@@ -20,14 +20,10 @@ namespace api_usuario.Data
             modelBuilder.Entity<Usuario>().Property(u => u.Nombre).HasColumnName("nombre");
             modelBuilder.Entity<Usuario>().Property(u => u.Email).HasColumnName("email");
             modelBuilder.Entity<Usuario>().Property(u => u.Celular).HasColumnName("celular");
-            modelBuilder.Entity<Usuario>().Property(u => u.Direccion).HasColumnName("direccion");
-            modelBuilder.Entity<Usuario>().Property(u => u.Ciudad).HasColumnName("ciudad");
-            modelBuilder.Entity<Usuario>().Property(u => u.Pais).HasColumnName("pais");
             modelBuilder.Entity<Usuario>().Property(u => u.FechaNacimiento).HasColumnName("fecha_nacimiento");
             modelBuilder.Entity<Usuario>().Property(u => u.Genero).HasColumnName("genero");
             modelBuilder.Entity<Usuario>().Property(u => u.Estado).HasColumnName("estado");
             modelBuilder.Entity<Usuario>().Property(u => u.FechaAlta).HasColumnName("fecha_alta");
-            modelBuilder.Entity<Usuario>().Property(u => u.FechaUltimoAcceso).HasColumnName("fecha_ultimo_acceso");
         }
     }
 }
