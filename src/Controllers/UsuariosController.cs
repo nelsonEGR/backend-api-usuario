@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using api_usuario.Data;
 using api_usuario.Models;
-using api_usuario.Dtos; // 👈 Importar los DTOs
+using api_usuario.Dtos;
 
 namespace api_usuario.Controllers
 {
@@ -29,19 +29,16 @@ namespace api_usuario.Controllers
         [HttpPost]
         public async Task<ActionResult<Usuario>> PostUsuario([FromBody] UsuarioCreateDto dto)
         {
+            if (dto.Genero != 'M' && dto.Genero != 'F')
+                return BadRequest("El género debe ser 'M' o 'F'");
+
             var usuario = new Usuario
             {
                 Nombre = dto.Nombre,
                 Email = dto.Email,
                 Celular = dto.Celular,
-                Direccion = dto.Direccion,
-                Ciudad = dto.Ciudad,
-                Pais = dto.Pais,
                 FechaNacimiento = dto.FechaNacimiento,
                 Genero = dto.Genero,
-                Estado = dto.Estado,
-                FechaAlta = DateTime.UtcNow,
-                FechaUltimoAcceso = DateTime.UtcNow
             };
 
             _context.Usuarios.Add(usuario);
@@ -53,31 +50,75 @@ namespace api_usuario.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutUsuario(int id, [FromBody] UsuarioUpdateDto dto)
         {
+            if (dto.Genero != 'M' && dto.Genero != 'F')
+                return BadRequest("El género debe ser 'M' o 'F'");
+
             var usuario = await _context.Usuarios.FindAsync(id);
             if (usuario == null) return NotFound();
 
             usuario.Nombre = dto.Nombre;
             usuario.Email = dto.Email;
             usuario.Celular = dto.Celular;
-            usuario.Direccion = dto.Direccion;
-            usuario.Ciudad = dto.Ciudad;
-            usuario.Pais = dto.Pais;
             usuario.FechaNacimiento = dto.FechaNacimiento;
             usuario.Genero = dto.Genero;
-            usuario.Estado = dto.Estado;
 
             await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUsuario(int id)
+[HttpDelete("{id}")]
+public async Task<IActionResult> DeleteUsuario(string id)
+{
+    if (string.IsNullOrWhiteSpace(id))
+        return BadRequest(new { mensaje = "El ID no puede estar vacío. Debe proporcionar un valor numérico válido." });
+
+    if (!int.TryParse(id, out int idInt) || idInt <= 0)
+        return BadRequest(new { mensaje = "El ID proporcionado no es un número válido." });
+
+    var usuario = await _context.Usuarios.FindAsync(idInt);
+    if (usuario == null)
+        return BadRequest(new { mensaje = $"El usuario con ID {idInt} no existe." });
+
+    if (usuario.Estado == 1)
+        return BadRequest(new { mensaje = "El usuario se encuentra activo y no puede ser eliminado." });
+
+    _context.Usuarios.Remove(usuario);
+    await _context.SaveChangesAsync();
+
+    return Ok(new { mensaje = $"El usuario con ID {idInt} fue eliminado correctamente." });
+}
+        /// PATCH: Activa la cuenta del usuario si está inactiva
+        [HttpPatch("{id}/activar")]
+        public async Task<IActionResult> ActivarUsuario(int id)
         {
             var usuario = await _context.Usuarios.FindAsync(id);
-            if (usuario == null) return NotFound();
-            _context.Usuarios.Remove(usuario);
+            if (usuario == null)
+                return NotFound(new { mensaje = $"El usuario con ID {id} no existe." });
+
+            if (usuario.Estado == 1)
+                return BadRequest(new { mensaje = $"La cuenta de {usuario.Nombre} ya está activa." });
+
+            usuario.Estado = 1;
             await _context.SaveChangesAsync();
-            return NoContent();
+
+            return Ok(new { mensaje = $"La cuenta de {usuario.Nombre} se activó correctamente." });
         }
+        [HttpPatch("{id}/desactivar")]
+        public async Task<IActionResult> DesactivarUsuario(int id)
+        {
+            var usuario = await _context.Usuarios.FindAsync(id);
+            if (usuario == null)
+                return NotFound(new { mensaje = $"El usuario con ID {id} no existe." });
+
+            if (usuario.Estado == 0)
+                return BadRequest(new { mensaje = $"La cuenta de {usuario.Nombre} ya está inactiva." });
+
+            usuario.Estado = 0;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensaje = $"La cuenta de {usuario.Nombre} se desactivó correctamente." });
+        }
+
     }
 }
+
