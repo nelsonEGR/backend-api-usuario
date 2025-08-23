@@ -21,7 +21,7 @@ namespace api_usuario.Controllers
         [HttpGet]
         public async Task<IActionResult> GetCiudades(
             [FromQuery(Name = "id_ciudad")] int? idCiudad,
-            [FromQuery(Name = "_id_departamento")] int? idDepartamento)
+            [FromQuery(Name = "id_departamento")] int? idDepartamento)
         {
             var query = _context.Ciudades.AsQueryable();
 
