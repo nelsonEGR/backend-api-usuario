@@ -94,5 +94,74 @@ namespace api_usuario.Controllers
 
             return Ok(new { mensaje = "Contraseña restablecida correctamente" });
         }
+
+        // 4️⃣ Actualizar ubicación (ciudad y departamento)
+        [HttpPut("{idUsuario}/ubicacion")]
+        public async Task<IActionResult> ActualizarUbicacionUsuario(int idUsuario, [FromBody] UsuarioUbicacionDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // 1️⃣ Verificar que exista el detalle del usuario
+            var usuarioDetalle = await _context.UsuarioDetalles
+                .FirstOrDefaultAsync(ud => ud.IdUsuario == idUsuario);
+
+            if (usuarioDetalle == null)
+            {
+                return NotFound(new
+                {
+                    mensaje = $"No existe un registro de detalle para el usuario con ID {idUsuario}."
+                });
+            }
+
+            // 2️⃣ Validar existencia de ciudad
+            bool ciudadExiste = await _context.Ciudades
+                .AnyAsync(c => c.IdCiudad == dto.IdCiudad);
+
+            if (!ciudadExiste)
+            {
+                return NotFound(new
+                {
+                    mensaje = $"La ciudad con ID {dto.IdCiudad} no existe."
+                });
+            }
+
+            // 3️⃣ Validar existencia de departamento
+            bool departamentoExiste = await _context.Departamentos
+                .AnyAsync(d => d.IdDepartamento == dto.IdDepartamento);
+
+            if (!departamentoExiste)
+            {
+                return NotFound(new
+                {
+                    mensaje = $"El departamento con ID {dto.IdDepartamento} no existe."
+                });
+            }
+
+            // 4️⃣ Actualizar solo los campos permitidos
+            usuarioDetalle.IdCiudad = dto.IdCiudad;
+            usuarioDetalle.IdDepartamento = dto.IdDepartamento;
+            usuarioDetalle.FechaUltimaActualizacion = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                mensaje = "Ubicación actualizada correctamente."
+            });
+        }
+
+
+
+
+
+
+
+
+
+
+
+
+
     }
 }
