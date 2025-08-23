@@ -1,5 +1,6 @@
 ﻿using api_usuario.Data;
 using Microsoft.EntityFrameworkCore;
+using TuProyecto.Filters; // 👈 Importa tu filtro ApiKeyAttribute
 
 var builder = WebApplication.CreateBuilder(args);
 var env = builder.Environment;
@@ -17,7 +18,13 @@ if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var portNumber))
 // 2. Registrar servicios
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-builder.Services.AddControllers();
+
+// 👇 Aquí agregamos el filtro global de API key
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add<ApiKeyAttribute>();
+});
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
