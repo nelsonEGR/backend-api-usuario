@@ -1,10 +1,13 @@
 ﻿using api_usuario.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models; // 👈 Necesario para OpenApi*
-using TuProyecto.Filters; // 👈 Importa tu filtro ApiKeyAttribute
+using Microsoft.OpenApi.Models; // Necesario para OpenApi*
+using TuProyecto.Filters;       // Importa tu filtro ApiKeyAttribute
 
 var builder = WebApplication.CreateBuilder(args);
 var env = builder.Environment;
+
+// Detectar si estamos en Render
+var isRender = Environment.GetEnvironmentVariable("RENDER") == "true";
 
 // 1. Configurar Kestrel SOLO si Render expone PORT
 var portEnv = Environment.GetEnvironmentVariable("PORT");
@@ -20,7 +23,7 @@ if (!string.IsNullOrEmpty(portEnv) && int.TryParse(portEnv, out var portNumber))
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// 👇 Aquí agregamos el filtro global de API key
+// Filtro global de API key
 builder.Services.AddControllers(options =>
 {
     options.Filters.Add<ApiKeyAttribute>();
@@ -28,14 +31,12 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
-// 🔹 Configuración de Swagger con API Key SOLO si está en Render o Producción
+// 3. Configuración de Swagger con API Key (solo en Render o Producción)
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "API Usuario", Version = "v1" });
 
-    // Detectar si estamos en Render (variable de entorno RENDER=true)
-    var isRender = Environment.GetEnvironmentVariable("RENDER") == "true" || env.IsProduction();
-    if (isRender)
+    if (isRender || env.IsProduction())
     {
         c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
         {
@@ -64,23 +65,22 @@ builder.Services.AddSwaggerGen(c =>
     }
 });
 
-// Agrego el servicio CORS aquí
+// 4. Configuración de CORS
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(
-        policy =>
-        {
-            policy.AllowAnyOrigin()
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
-        });
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
 });
 
-// 3. Construir la app
+// 5. Construir la app
 var app = builder.Build();
 
-// 4. Middleware y Swagger
-if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("RENDER") == "true")
+// 6. Middleware y Swagger
+if (env.IsDevelopment() || isRender)
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
@@ -89,15 +89,15 @@ if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("RENDE
     });
 }
 
-// Habilito el middleware CORS aquí
+// 7. Habilitar CORS antes de Authorization
 app.UseCors();
 
-// 5. Health check en raíz
+// 8. Health check en raíz
 app.MapGet("/", () => Results.Ok("API corriendo 🎉"));
 
-// 6. Autorización y controladores
+// 9. Autorización y controladores
 app.UseAuthorization();
 app.MapControllers();
 
-// 7. Arrancar la app
+// 10. Arrancar la app
 app.Run();
