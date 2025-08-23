@@ -41,10 +41,9 @@ builder.Services.AddSwaggerGen(c =>
         c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
         {
             Description = "Ingrese su API Key",
-            Name = "X-API-KEY", // nombre del header
+            Name = "X-API-KEY", // nombre exacto del header
             In = ParameterLocation.Header,
-            Type = SecuritySchemeType.ApiKey,
-            Scheme = "ApiKeyScheme"
+            Type = SecuritySchemeType.ApiKey
         });
 
         c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -56,8 +55,7 @@ builder.Services.AddSwaggerGen(c =>
                     {
                         Type = ReferenceType.SecurityScheme,
                         Id = "ApiKey"
-                    },
-                    In = ParameterLocation.Header
+                    }
                 },
                 new List<string>()
             }
