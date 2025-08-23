@@ -1,5 +1,6 @@
 ﻿using api_usuario.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Models; // 👈 Necesario para OpenApi*
 using TuProyecto.Filters; // 👈 Importa tu filtro ApiKeyAttribute
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,7 +27,42 @@ builder.Services.AddControllers(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+
+// 🔹 Configuración de Swagger con API Key SOLO si está en Render o Producción
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "API Usuario", Version = "v1" });
+
+    // Detectar si estamos en Render (variable de entorno RENDER=true)
+    var isRender = Environment.GetEnvironmentVariable("RENDER") == "true" || env.IsProduction();
+    if (isRender)
+    {
+        c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+        {
+            Description = "Ingrese su API Key",
+            Name = "X-API-KEY", // nombre del header
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "ApiKeyScheme"
+        });
+
+        c.AddSecurityRequirement(new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "ApiKey"
+                    },
+                    In = ParameterLocation.Header
+                },
+                new List<string>()
+            }
+        });
+    }
+});
 
 // Agrego el servicio CORS aquí
 builder.Services.AddCors(options =>
@@ -43,11 +79,9 @@ builder.Services.AddCors(options =>
 // 3. Construir la app
 var app = builder.Build();
 
-// 4. Middleware y Swagger en Development
-if (app.Environment.IsDevelopment())
+// 4. Middleware y Swagger
+if (app.Environment.IsDevelopment() || Environment.GetEnvironmentVariable("RENDER") == "true")
 {
-    app.UseDeveloperExceptionPage();
-    app.UseHttpsRedirection();
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
