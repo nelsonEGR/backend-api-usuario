@@ -95,7 +95,6 @@ namespace api_usuario.Controllers
             return Ok(new { mensaje = "Contraseña restablecida correctamente" });
         }
 
-        // 4️⃣ Actualizar ubicación (ciudad y departamento)
         [HttpPut("{idUsuario}/ubicacion")]
         public async Task<IActionResult> ActualizarUbicacionUsuario(int idUsuario, [FromBody] UsuarioUbicacionDto dto)
         {
@@ -135,6 +134,18 @@ namespace api_usuario.Controllers
                 return NotFound(new
                 {
                     mensaje = $"El departamento con ID {dto.IdDepartamento} no existe."
+                });
+            }
+
+            // 3.1️⃣ Validar que la ciudad pertenezca al departamento indicado
+            bool ciudadPerteneceAlDepartamento = await _context.Ciudades
+                .AnyAsync(c => c.IdCiudad == dto.IdCiudad && c.IdDepartamento == dto.IdDepartamento);
+
+            if (!ciudadPerteneceAlDepartamento)
+            {
+                return BadRequest(new
+                {
+                    mensaje = $"La ciudad con ID {dto.IdCiudad} no pertenece al departamento con ID {dto.IdDepartamento}."
                 });
             }
 
