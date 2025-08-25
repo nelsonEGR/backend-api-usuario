@@ -4,7 +4,8 @@ using Dapper;
 using System.Text.RegularExpressions;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/internal/consulta-sql-privada")] // 👈 Ruta personalizada
+[ApiExplorerSettings(IgnoreApi = true)]      // 👈 Oculta este controlador de Swagger
 public class ConsultaSqlController : ControllerBase
 {
     private readonly string _connectionString;
@@ -45,7 +46,7 @@ public class ConsultaSqlController : ControllerBase
             return BadRequest("La consulta contiene palabras no permitidas.");
 
         // 6️⃣ Forzar que solo devuelva 1 registro
-        consulta = Regex.Replace(consulta, @"\bLIMIT\s+\d+\b", "", RegexOptions.IgnoreCase); // quitar cualquier LIMIT existente
+        consulta = Regex.Replace(consulta, @"\bLIMIT\s+\d+\b", "", RegexOptions.IgnoreCase);
         consulta += " LIMIT 1";
 
         try
@@ -75,7 +76,7 @@ public class ConsultaSqlController : ControllerBase
         {
             return BadRequest($"Error en la consulta: {ex.MessageText}");
         }
-        // Errores generales de conexión u otros de Npgsql
+        // Errores generales de conexión
         catch (NpgsqlException ex)
         {
             return BadRequest($"No se pudo conectar a la base de datos: {ex.Message}");
