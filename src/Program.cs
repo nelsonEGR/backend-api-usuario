@@ -91,7 +91,7 @@ if (env.IsDevelopment() || isRender)
 app.UseCors();
 
 // 8. Health check en raíz
-app.MapGet("/", () => Results.Ok("API corriendo"));
+app.MapGet("/", () => Results.Ok("API corriendo 🎉"));
 
 // 9. Autorización y controladores
 app.UseAuthorization();
