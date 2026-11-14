@@ -1,8 +1,8 @@
-﻿namespace api_usuario.Models
+﻿namespace ApiUsuario.Models;
+
+public sealed class Departamento
 {
-    public class Departamento
-    {
-        public int IdDepartamento { get; set; } // PK
-        public string NombreDepartamento { get; set; } = string.Empty;
-    }
+    public int IdDepartamento { get; set; }
+
+    public string NombreDepartamento { get; set; } = string.Empty;
 }
