@@ -244,10 +244,8 @@ public static class ServiceCollectionExtensions
                 Title = "API Usuario",
                 Version = "v1",
                 Description =
-                    "API para la gestion de usuarios, ubicacion y contrasenas. " +
-                    "Todas las rutas requieren el header X-API-KEY. " +
-                    "En GET /api/Usuarios: sin parametros devuelve todos los usuarios, " +
-                    "'?id=' devuelve uno solo y '?page='/'?pageSize=' permiten paginar."
+                    "Gestion de usuarios, ubicacion y contrasenas. " +
+                    "Todas las rutas requieren el header X-API-KEY."
             });
 
             options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
@@ -273,7 +271,9 @@ public static class ServiceCollectionExtensions
                 }
             });
 
-            options.OperationFilter<UsuariosGetResponseOperationFilter>();
+            // Oculta la estructura de los DTOs en el documento OpenAPI. Swagger
+            // conserva rutas, metodos y parametros para generar las URLs/curl.
+            options.DocumentFilter<HideSchemasDocumentFilter>();
 
             // Incluye los comentarios XML del proyecto en Swagger para documentar
             // parametros y respuestas directamente en la UI.
