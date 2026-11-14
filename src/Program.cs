@@ -55,6 +55,10 @@ if (swaggerOptions.IsEnabled(app.Environment))
     app.UseSwaggerUI(options =>
     {
         options.SwaggerEndpoint("/swagger/v1/swagger.json", "API V1");
+
+        // Oculta la seccion "Schemas" del final. La API se usa para obtener
+        // las URLs/curl, no para revisar los modelos.
+        options.DefaultModelsExpandDepth(-1);
     });
 }
 
