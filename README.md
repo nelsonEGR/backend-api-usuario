@@ -68,7 +68,7 @@ inyecta por variables de entorno, igual en local y en produccion.
 |---|---|---|
 | `ConnectionStrings__DefaultConnection` | Si* | Cadena de conexion Npgsql. |
 | `DATABASE_URL` | Alternativa | URI `postgres://usuario:password@host/db`; se convierte automaticamente. |
-| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key usada como `clientSecret` del login generico y como `X-API-KEY` en cada peticion. |
+| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key usada como `clientSecret` del login generico. |
 | `Security__AdminApiKey` (o `ADMIN_API_KEY`) | Recomendada | API key administrativa (rol `admin`). |
 | `Security__RequireApiKey` | No | En Development, `false` desactiva token y API key. En produccion siempre se exige. |
 | `Security__UseHsts` | No | Activa HSTS. Por defecto `true` en Production. |
@@ -88,15 +88,14 @@ inyecta por variables de entorno, igual en local y en produccion.
 \* Si no se configura ninguna de las dos, la aplicacion falla al iniciar con un
 mensaje claro. Es intencional: evita arrancar sin base de datos.
 
-### Login generico y doble validacion
+### Login generico y access token
 
-1. `POST /api/auth/token` con `clientId` (opcional) y `clientSecret` (la API key).
+1. `POST /api/auth/token` sin headers, con `clientSecret` (la API key).
    Devuelve `accessToken`, `tokenType`, `expiresIn` y `expiresAt`.
-2. En el resto de rutas protegidas envie **ambos** headers:
+2. En el resto de rutas protegidas envie solo:
 
    ```
    Authorization: Bearer <accessToken>
-   X-API-KEY: <api key o admin key>
    ```
 
 Roles:
@@ -111,8 +110,8 @@ El `access_token` expira en 5 minutos por defecto (`Jwt__ExpiresMinutes`). Al
 expirar, vuelva a ejecutar el login generico: no hay refresh token todavia.
 
 En **Development** la seguridad esta desactivada por defecto
-(`Security:RequireApiKey=false`): no se exige ni `access_token` ni `X-API-KEY`.
-Para probar la doble validacion en local, configure
+(`Security:RequireApiKey=false`): no se exige `access_token` ni validacion de
+`clientSecret`. Para probar la seguridad en local, configure
 `Security:RequireApiKey=true`.
 
 ## 5. Ejecucion local
@@ -136,9 +135,9 @@ dotnet run
 Swagger: `http://localhost:5291/swagger`
 
 En **Development** la seguridad queda desactivada por defecto: no se exige
-`access_token` ni `X-API-KEY`, igual que antes. Para probar la doble validacion
-en local configure `Security:RequireApiKey=true` (por user-secrets o `Security__RequireApiKey=true`).
-En produccion la doble validacion siempre esta activa.
+`access_token` ni validacion de `clientSecret`. Para probar la seguridad en local
+configure `Security:RequireApiKey=true` (por user-secrets o `Security__RequireApiKey=true`).
+En produccion la seguridad siempre esta activa.
 
 ### Alternativa con variables de entorno
 
@@ -152,12 +151,12 @@ dotnet run --project src/api.csproj
 
 ## 6. Endpoints
 
-Todas las rutas protegidas exigen doble validacion: `Authorization: Bearer` y
-`X-API-KEY`. Solo `/`, `/health`, `/api/auth/token` y Swagger son anonimos.
+Todas las rutas protegidas exigen `Authorization: Bearer`. Solo `/`, `/health`,
+`/api/auth/token` y Swagger son anonimos.
 
 | Metodo | Ruta | Descripcion |
 |---|---|---|
-| POST | `/api/auth/token` | Login generico: recibe `clientId` (opcional) y `clientSecret`, devuelve el `accessToken`. |
+| POST | `/api/auth/token` | Login generico: recibe solo `clientSecret` y devuelve el `accessToken`. |
 | GET | `/` | Verificacion simple de que el proceso responde. |
 | GET | `/health` | Estado del proceso, conexion a PostgreSQL y esquema (tablas/columnas). Usar en Render. |
 | GET | `/api/usuarios` | Lista todos los usuarios (comportamiento historico). |
@@ -290,7 +289,7 @@ Si el servicio de Render **no** usa Docker, configure:
    - `https://TU-SERVICIO.onrender.com/` debe responder `"API corriendo"`.
    - Un endpoint protegido sin headers debe responder `401`.
    - `POST /api/auth/token` con el `clientSecret` correcto debe devolver `accessToken`.
-   - Con `Authorization: Bearer` y `X-API-KEY` correctos debe responder `200`.
+   - Con `Authorization: Bearer` correcto debe responder `200`.
 
 ### Problemas comunes al desplegar
 

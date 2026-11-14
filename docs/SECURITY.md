@@ -27,13 +27,13 @@ Pasos:
 3. Actualizar el frontend/cliente con la nueva key.
 4. Retirar la variable antigua `API_KEY` cuando ya no se use como respaldo.
 
-La API key sigue siendo obligatoria en cada peticion (`X-API-KEY`) incluso si se
-usa un `access_token`: la API aplica doble validacion. El `X-API-KEY` tambien es
-el `clientSecret` que se envia al login generico (`POST /api/auth/token`).
+La API key se usa solo como `clientSecret` en el login generico
+(`POST /api/auth/token`) para obtener el `access_token`. Las demas rutas
+protegidas exigen unicamente `Authorization: Bearer {access_token}`.
 
 En **Development** se puede desactivar toda la seguridad con
 `Security__RequireApiKey=false` (no se exige token ni API key). En cualquier otro
-entorno la doble validacion se fuerza siempre, aunque esa variable valga `false`.
+entorno la seguridad se fuerza siempre, aunque esa variable valga `false`.
 
 ## 2.1 Rotar la clave de firma JWT
 
