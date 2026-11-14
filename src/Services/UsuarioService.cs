@@ -93,7 +93,7 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
             Nombre = dto.Nombre.Trim(),
             Email = email,
             Celular = string.IsNullOrWhiteSpace(dto.Celular) ? null : dto.Celular.Trim(),
-            FechaNacimiento = dto.FechaNacimiento,
+            FechaNacimiento = NormalizeBirthDate(dto.FechaNacimiento),
             Genero = dto.Genero,
             // Se conserva el comportamiento historico: el usuario nace inactivo
             // y se activa con PATCH /api/usuarios/{id}/activar.
@@ -135,7 +135,7 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
         usuario.Nombre = dto.Nombre.Trim();
         usuario.Email = email;
         usuario.Celular = string.IsNullOrWhiteSpace(dto.Celular) ? null : dto.Celular.Trim();
-        usuario.FechaNacimiento = dto.FechaNacimiento;
+        usuario.FechaNacimiento = NormalizeBirthDate(dto.FechaNacimiento);
         usuario.Genero = dto.Genero;
 
         try
@@ -214,6 +214,9 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
     }
 
     private static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
+
+    private static DateTime NormalizeBirthDate(DateTime fechaNacimiento) =>
+        DateTime.SpecifyKind(fechaNacimiento.Date, DateTimeKind.Utc);
 
     private static void ValidateBirthDate(DateTime fechaNacimiento)
     {
