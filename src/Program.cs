@@ -1,15 +1,43 @@
-﻿using ApiUsuario.Configuration;
+﻿using System.Globalization;
+using ApiUsuario.Configuration;
 using ApiUsuario.Extensions;
 using ApiUsuario.Logging;
 using ApiUsuario.Middleware;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
+using Serilog;
+using Serilog.Context;
+using Serilog.Sinks.Grafana.Loki;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Render inyecta PORT; en otros entornos se respeta ASPNETCORE_URLS.
 builder.WebHost.ConfigureRenderPort();
+
+builder.Host.UseSerilog((context, services, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext()
+        .Enrich.WithProperty("Application", "backend-api-usuario")
+        .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
+
+    var lokiUrl = context.Configuration["Loki:Url"];
+
+    if (!string.IsNullOrWhiteSpace(lokiUrl))
+    {
+        configuration.WriteTo.GrafanaLoki(
+            lokiUrl,
+            labels: [new LokiLabel { Key = "app", Value = "backend-api-usuario" }],
+            credentials: new LokiCredentials
+            {
+                Login = context.Configuration["Loki:User"] ?? string.Empty,
+                Password = context.Configuration["Loki:ApiKey"] ?? string.Empty
+            });
+    }
+});
 
 builder.Services.AddApiServices(builder.Configuration, builder.Environment);
 
@@ -39,6 +67,24 @@ forwardedHeadersOptions.KnownNetworks.Clear();
 forwardedHeadersOptions.KnownProxies.Clear();
 
 app.UseForwardedHeaders(forwardedHeadersOptions);
+
+app.Use(async (context, next) =>
+{
+    var requestId = context.Request.Headers.TryGetValue("X-Request-Id", out var header)
+        && !string.IsNullOrWhiteSpace(header)
+            ? header.ToString()
+            : Guid.NewGuid().ToString("N");
+
+    context.TraceIdentifier = requestId;
+    context.Response.Headers["X-Request-Id"] = requestId;
+
+    using (LogContext.PushProperty("RequestId", requestId))
+    {
+        await next();
+    }
+});
+
+app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
@@ -89,6 +135,13 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 app.MapControllers();
 
-app.Run();
+try
+{
+    app.Run();
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 public partial class Program { }
