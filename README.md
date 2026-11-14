@@ -29,7 +29,8 @@ backend-api-usuario/
 │   ├── Data/               DbContext, configuraciones EF y migraciones
 │   ├── Dtos/               Contratos de entrada/salida con validaciones
 │   ├── Extensions/         Registro de servicios y configuracion del host
-│   ├── HealthChecks/       Verificacion de disponibilidad de PostgreSQL
+│   ├── HealthChecks/       Verificacion de conexion y del esquema de PostgreSQL
+│   ├── Logging/            Mensajes de arranque (LoggerMessage)
 │   ├── Mappings/           Conversion entidad -> DTO
 │   ├── Middleware/         Manejo global de errores y cabeceras de seguridad
 │   ├── Models/             Entidades del dominio
@@ -136,8 +137,9 @@ Todas las rutas requieren `X-API-KEY` salvo `/`, `/health` y Swagger.
 | Metodo | Ruta | Descripcion |
 |---|---|---|
 | GET | `/` | Verificacion simple de que el proceso responde. |
-| GET | `/health` | Estado del proceso y de PostgreSQL. Usar en Render. |
-| GET | `/api/usuarios?page=1&pageSize=50` | Lista usuarios. Sin paginacion devuelve todos. |
+| GET | `/health` | Estado del proceso, conexion a PostgreSQL y esquema (tablas/columnas). Usar en Render. |
+| GET | `/api/usuarios` | Lista todos los usuarios (comportamiento historico). |
+| GET | `/api/usuarios?page=1&pageSize=50` | Igual, pero paginado. Parametros opcionales. |
 | GET | `/api/usuarios/{id}` | Consulta un usuario. |
 | POST | `/api/usuarios` | Crea un usuario (nace inactivo). |
 | PUT | `/api/usuarios/{id}` | Actualiza datos del usuario. |
@@ -151,8 +153,14 @@ Todas las rutas requieren `X-API-KEY` salvo `/`, `/health` y Swagger.
 | GET | `/api/departamentos?id=1` | Lista o consulta departamentos. |
 | GET | `/api/ciudades?id_ciudad=1&id_departamento=1` | Lista o filtra ciudades. |
 
-La paginacion agrega el header `X-Total-Count` y mantiene la respuesta como
-arreglo para no romper clientes existentes.
+La paginacion es opcional: `page` y `pageSize` solo se aplican si se envian.
+Sin ellos, `GET /api/usuarios` devuelve todos los registros como antes. Cuando se
+paginan, la respuesta sigue siendo un arreglo y se agrega el header
+`X-Total-Count` con el total de registros.
+
+> En Swagger, el boton **Try it out** recuerda los valores escritos en `page` y
+> `pageSize` y los incluye en el curl generado. Deje ambos campos vacios para
+> obtener la URL limpia `/api/usuarios`.
 
 Los errores usan `application/problem+json` e incluyen la propiedad `mensaje`
 por compatibilidad con el frontend anterior.
@@ -247,10 +255,49 @@ Si el servicio de Render **no** usa Docker, configure:
 
 3. Guarde y haga **Manual Deploy -> Clear build cache & deploy**.
 4. Verifique:
-   - `https://TU-SERVICIO.onrender.com/health` debe responder `Healthy`.
+   - `https://TU-SERVICIO.onrender.com/health` debe responder `Healthy`. Si responde
+     `Unhealthy`, la conexion falla o la base no tiene las tablas esperadas (por
+     ejemplo, una rama vacia de Neon).
    - `https://TU-SERVICIO.onrender.com/` debe responder `"API corriendo"`.
    - Un endpoint protegido sin header debe responder `401`.
    - Con `X-API-KEY` correcta debe responder `200`.
+
+### Problemas comunes al desplegar
+
+**`No se configuro la cadena de conexion`**
+
+Significa que la variable no esta llegando al contenedor. Revise en Render:
+
+1. Que la variable este en **el mismo servicio** que despliega (no en otro servicio
+   ni en otro entorno).
+2. Que el nombre sea exactamente `ConnectionStrings__DefaultConnection`
+   (**dos** guiones bajos, no uno ni dos puntos).
+3. Que la variable tenga valor y que el servicio se haya redesplegado despues de
+   guardarla (Render lo hace al guardar, pero verifique el commit del nuevo deploy).
+4. Que no sea un *Secret File*: debe ser **Environment Variable**.
+
+Tambien se aceptan como respaldo: `DATABASE_URL`, `POSTGRES_URL`,
+`POSTGRESQL_URL`, `NEON_DATABASE_URL`, `CONNECTION_STRING` y
+`ConnectionStrings_DefaultConnection`.
+
+El mensaje de error incluye los **nombres** (nunca los valores) de las variables
+relacionadas que sí existen en el entorno, para detectar errores de tipeo.
+
+**`/health` responde `Unhealthy`**
+
+El health check ahora valida la conexion **y** el esquema: consulta las tablas
+`usuario`, `departamentos`, `ciudades` y `usuario_detalle` con `LIMIT 1`. Si la
+cadena apunta a una rama vacia de Neon o a otro proyecto, responde `Unhealthy`
+en lugar de dejar que los endpoints fallen con `500`.
+
+Revise que `ConnectionStrings__DefaultConnection` apunte al proyecto/rama que
+realmente tiene los datos.
+
+**`/health` responde `Healthy` pero un endpoint devuelve `500`**
+
+Puede ser un error de datos o de una columna no contemplada. Revise los logs de
+Render: el manejador global registra la excepcion completa (`Npgsql.PostgresException`)
+sin exponerla al cliente.
 
 ### Notas de compatibilidad
 

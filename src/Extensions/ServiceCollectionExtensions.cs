@@ -242,7 +242,11 @@ public static class ServiceCollectionExtensions
             {
                 Title = "API Usuario",
                 Version = "v1",
-                Description = "API para la gestion de usuarios, ubicacion y contrasenas."
+                Description =
+                    "API para la gestion de usuarios, ubicacion y contrasenas. " +
+                    "Todas las rutas requieren el header X-API-KEY. " +
+                    "En GET /api/Usuarios los parametros page y pageSize son opcionales: " +
+                    "si se omiten se devuelven todos los usuarios."
             });
 
             options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
@@ -267,6 +271,15 @@ public static class ServiceCollectionExtensions
                     Array.Empty<string>()
                 }
             });
+
+            // Incluye los comentarios XML del proyecto en Swagger para documentar
+            // parametros y respuestas directamente en la UI.
+            var xmlPath = Path.Combine(AppContext.BaseDirectory, "api.xml");
+
+            if (File.Exists(xmlPath))
+            {
+                options.IncludeXmlComments(xmlPath, includeControllerXmlComments: true);
+            }
         });
     }
 }
