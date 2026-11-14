@@ -23,7 +23,12 @@ public sealed class AuthController(
 {
     /// <summary>Genera un access token JWT generico.</summary>
     /// <remarks>
-    /// Envie el secreto configurado en 'Security:ApiKey' (rol client) o en
+    /// Body de ejemplo:
+    ///
+    ///     { "clientId": "generic-client", "clientSecret": "TU_API_KEY" }
+    ///
+    /// 'clientId' es opcional (default "generic-client"). 'clientSecret' debe ser
+    /// el valor configurado en 'Security:ApiKey' (rol client) o en
     /// 'Security:AdminApiKey' (rol admin). El token devuelto debe usarse en el
     /// resto de endpoints como 'Authorization: Bearer {accessToken}'.
     /// </remarks>
