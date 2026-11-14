@@ -13,14 +13,13 @@ namespace ApiUsuario.Controllers;
 [Authorize]
 public sealed class UsuariosController(IUsuarioService usuarioService) : ControllerBase
 {
-    /// <summary>Lista los usuarios registrados o consulta uno por ID.</summary>
+    /// <summary>Lista todos los usuarios o consulta uno por '?id'.</summary>
     /// <remarks>
-    /// Sin parametros devuelve todos los usuarios. Si se envia 'id' devuelve un
-    /// solo usuario, o 404 si no existe. La paginacion es opcional y solo aplica
-    /// cuando no se envia 'id': agregue '?page=1&amp;pageSize=50' en la URL.
-    /// La respuesta paginada incluye el header 'X-Total-Count'.
+    /// Con '?id=N' devuelve un usuario (404 si no existe). Sin 'id' devuelve todos.
+    /// Paginacion opcional solo sin 'id': '?page=1&amp;pageSize=50'. En ese caso
+    /// la respuesta incluye el header 'X-Total-Count'.
     /// </remarks>
-    /// <param name="id">Identificador del usuario (opcional).</param>
+    /// <param name="id">ID del usuario. Omitir para listar todos.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<UsuarioDto>), StatusCodes.Status200OK)]
