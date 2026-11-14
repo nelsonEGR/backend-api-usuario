@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Encodings.Web;
 using ApiUsuario.Configuration;
 using Microsoft.AspNetCore.Authentication;
@@ -51,12 +49,12 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
             return Task.FromResult(AuthenticateResult.Fail("La API key esta vacia."));
         }
 
-        if (Matches(_security.AdminApiKey, providedKey))
+        if (SecretComparer.Matches(_security.AdminApiKey, providedKey))
         {
             return Task.FromResult(AuthenticateResult.Success(CreateTicket("admin", isAdmin: true)));
         }
 
-        if (Matches(_security.ApiKey, providedKey))
+        if (SecretComparer.Matches(_security.ApiKey, providedKey))
         {
             // Compatibilidad: si no existe una llave administrativa separada,
             // la llave principal conserva los permisos de administracion.
@@ -96,19 +94,6 @@ public sealed class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAu
 
         var identity = new ClaimsIdentity(claims, Scheme.Name);
         return new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
-    }
-
-    private static bool Matches(string? expected, string provided)
-    {
-        if (string.IsNullOrWhiteSpace(expected))
-        {
-            return false;
-        }
-
-        var expectedHash = SHA256.HashData(Encoding.UTF8.GetBytes(expected));
-        var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided));
-
-        return CryptographicOperations.FixedTimeEquals(expectedHash, providedHash);
     }
 
     private async Task WriteProblemAsync(int statusCode, string title, string detail)

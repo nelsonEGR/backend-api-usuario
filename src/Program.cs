@@ -117,9 +117,11 @@ if (swaggerOptions.IsEnabled(app.Environment))
     });
 }
 
+app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
+app.UseMiddleware<ApiKeyValidationMiddleware>();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok("API corriendo")).AllowAnonymous();

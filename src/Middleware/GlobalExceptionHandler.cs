@@ -28,6 +28,10 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
                 StatusCodes.Status400BadRequest,
                 "Solicitud invalida",
                 exception.Message),
+            UnauthorizedException => (
+                StatusCodes.Status401Unauthorized,
+                "No autorizado",
+                exception.Message),
             NotFoundException => (
                 StatusCodes.Status404NotFound,
                 "Recurso no encontrado",

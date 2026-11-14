@@ -17,8 +17,8 @@ public sealed class SecurityOptions
     public string? AdminApiKey { get; set; }
 
     /// <summary>
-    /// Si es null, la API key es obligatoria. En Development se desactiva
-    /// explicitamente desde appsettings.Development.json.
+    /// En Development, false desactiva la seguridad (access token y API key).
+    /// En otros entornos siempre se exige, sin importar este valor.
     /// </summary>
     public bool? RequireApiKey { get; set; }
 

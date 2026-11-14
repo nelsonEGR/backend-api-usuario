@@ -68,10 +68,14 @@ inyecta por variables de entorno, igual en local y en produccion.
 |---|---|---|
 | `ConnectionStrings__DefaultConnection` | Si* | Cadena de conexion Npgsql. |
 | `DATABASE_URL` | Alternativa | URI `postgres://usuario:password@host/db`; se convierte automaticamente. |
-| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key que envian los clientes en `X-API-KEY`. |
-| `Security__AdminApiKey` (o `ADMIN_API_KEY`) | Recomendada | API key para endpoints administrativos (`X-API-KEY`). |
-| `Security__RequireApiKey` | No | `true`/`false`. Por defecto `true` en todos los entornos. |
+| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key usada como `clientSecret` del login generico y como `X-API-KEY` en cada peticion. |
+| `Security__AdminApiKey` (o `ADMIN_API_KEY`) | Recomendada | API key administrativa (rol `admin`). |
+| `Security__RequireApiKey` | No | En Development, `false` desactiva token y API key. En produccion siempre se exige. |
 | `Security__UseHsts` | No | Activa HSTS. Por defecto `true` en Production. |
+| `Jwt__Key` (o `JWT_KEY`) | Si en produccion | Clave de firma del JWT. Minimo 32 caracteres. |
+| `Jwt__Issuer` | No | Emisor del token (default `api-usuario`). |
+| `Jwt__Audience` | No | Audiencia del token (default `api-usuario-clients`). |
+| `Jwt__ExpiresMinutes` | No | Validez del `access_token` en minutos (5 a 1440, default 5). |
 | `Cors__AllowedOrigins__0` | Recomendada | Origen permitido, por ejemplo `https://mi-frontend.com`. |
 | `Cors__AllowAnyOrigin` | No | Mantiene compatibilidad con `*`. Recomendado `false` en produccion. |
 | `Swagger__Enabled` | No | Por defecto solo `true` en Development. |
@@ -84,7 +88,18 @@ inyecta por variables de entorno, igual en local y en produccion.
 \* Si no se configura ninguna de las dos, la aplicacion falla al iniciar con un
 mensaje claro. Es intencional: evita arrancar sin base de datos.
 
-### Roles de API key
+### Login generico y doble validacion
+
+1. `POST /api/auth/token` con `clientId` (opcional) y `clientSecret` (la API key).
+   Devuelve `accessToken`, `tokenType`, `expiresIn` y `expiresAt`.
+2. En el resto de rutas protegidas envie **ambos** headers:
+
+   ```
+   Authorization: Bearer <accessToken>
+   X-API-KEY: <api key o admin key>
+   ```
+
+Roles:
 
 - `Security__ApiKey`: rol `client`. Acceso a los endpoints normales.
 - `Security__AdminApiKey`: rol `admin`. Necesaria para asignar y resetear contrasenas.
@@ -92,11 +107,8 @@ mensaje claro. Es intencional: evita arrancar sin base de datos.
   administracion para no romper el despliegue anterior. En produccion configure
   ambas y registre la advertencia que aparece en los logs.
 
-Los headers son:
-
-```
-X-API-KEY: <api key o admin key>
-```
+El `access_token` expira en 5 minutos por defecto (`Jwt__ExpiresMinutes`). Al
+expirar, vuelva a ejecutar el login generico: no hay refresh token todavia.
 
 ## 5. Ejecucion local
 
@@ -110,6 +122,7 @@ cd src
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=api_usuario;Username=postgres;Password=TU_PASSWORD;SslMode=Prefer"
 dotnet user-secrets set "Security:ApiKey" "dev-api-key"
 dotnet user-secrets set "Security:AdminApiKey" "dev-admin-key"
+dotnet user-secrets set "Jwt:Key" "dev-jwt-signing-key-con-mas-de-32-caracteres"
 
 # 3. Ejecutar
 dotnet run
@@ -117,9 +130,10 @@ dotnet run
 
 Swagger: `http://localhost:5291/swagger`
 
-En todos los entornos la API key es obligatoria por defecto. En local configure
-`Security:ApiKey` con user-secrets. Si necesita desactivarla temporalmente para
-probar, ejecute con `Security__RequireApiKey=false` (nunca en produccion).
+En **Development** la seguridad queda desactivada por defecto: no se exige
+`access_token` ni `X-API-KEY`, igual que antes. Para probar la doble validacion
+en local configure `Security:RequireApiKey=true` (por user-secrets o `Security__RequireApiKey=true`).
+En produccion la doble validacion siempre esta activa.
 
 ### Alternativa con variables de entorno
 
@@ -127,15 +141,18 @@ probar, ejecute con `Security__RequireApiKey=false` (nunca en produccion).
 $env:ConnectionStrings__DefaultConnection="Host=localhost;Database=api_usuario;Username=postgres;Password=TU_PASSWORD"
 $env:Security__ApiKey="dev-api-key"
 $env:Security__AdminApiKey="dev-admin-key"
+$env:Jwt__Key="dev-jwt-signing-key-con-mas-de-32-caracteres"
 dotnet run --project src/api.csproj
 ```
 
 ## 6. Endpoints
 
-Todas las rutas requieren `X-API-KEY` salvo `/`, `/health` y Swagger.
+Todas las rutas protegidas exigen doble validacion: `Authorization: Bearer` y
+`X-API-KEY`. Solo `/`, `/health`, `/api/auth/token` y Swagger son anonimos.
 
 | Metodo | Ruta | Descripcion |
 |---|---|---|
+| POST | `/api/auth/token` | Login generico: recibe `clientId` (opcional) y `clientSecret`, devuelve el `accessToken`. |
 | GET | `/` | Verificacion simple de que el proceso responde. |
 | GET | `/health` | Estado del proceso, conexion a PostgreSQL y esquema (tablas/columnas). Usar en Render. |
 | GET | `/api/usuarios` | Lista todos los usuarios (comportamiento historico). |
@@ -249,6 +266,8 @@ Si el servicio de Render **no** usa Docker, configure:
    ConnectionStrings__DefaultConnection=Host=...;Database=neondb;Username=neondb_owner;Password=NUEVA_PASSWORD;SslMode=Require
    Security__ApiKey=GENERAR_UNA_CLAVE_LARGA
    Security__AdminApiKey=GENERAR_OTRA_CLAVE_LARGA
+   Jwt__Key=GENERAR_UNA_CLAVE_DE_AL_MENOS_32_CARACTERES
+   Jwt__ExpiresMinutes=5
    Cors__AllowedOrigins__0=https://tu-frontend.com
    Cors__AllowAnyOrigin=false
    Swagger__Enabled=false
@@ -264,8 +283,9 @@ Si el servicio de Render **no** usa Docker, configure:
      `Unhealthy`, la conexion falla o la base no tiene las tablas esperadas (por
      ejemplo, una rama vacia de Neon).
    - `https://TU-SERVICIO.onrender.com/` debe responder `"API corriendo"`.
-   - Un endpoint protegido sin header debe responder `401`.
-   - Con `X-API-KEY` correcta debe responder `200`.
+   - Un endpoint protegido sin headers debe responder `401`.
+   - `POST /api/auth/token` con el `clientSecret` correcto debe devolver `accessToken`.
+   - Con `Authorization: Bearer` y `X-API-KEY` correctos debe responder `200`.
 
 ### Problemas comunes al desplegar
 

@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Threading.RateLimiting;
 using ApiUsuario.Configuration;
 using ApiUsuario.Data;
@@ -7,10 +10,13 @@ using ApiUsuario.Security;
 using ApiUsuario.Services;
 using ApiUsuario.Swagger;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 namespace ApiUsuario.Extensions;
@@ -39,6 +45,8 @@ public static class ServiceCollectionExtensions
         services.Configure<RateLimitingSettings>(configuration.GetSection(RateLimitingSettings.SectionName));
         services.Configure<SwaggerSettings>(configuration.GetSection(SwaggerSettings.SectionName));
 
+        var requireSecurity = ResolveRequireSecurity(configuration, environment);
+
         // Compatibilidad con las variables de entorno usadas por el despliegue anterior.
         services.PostConfigure<SecurityOptions>(options =>
         {
@@ -54,6 +62,10 @@ public static class ServiceCollectionExtensions
 
             options.ApiKey = options.ApiKey?.Trim();
             options.AdminApiKey = options.AdminApiKey?.Trim();
+
+            // En Development se puede desactivar la seguridad (token + API key).
+            // En otros entornos esta siempre activa.
+            options.RequireApiKey = requireSecurity;
         });
 
         services.AddScoped<IUsuarioService, UsuarioService>();
@@ -102,7 +114,7 @@ public static class ServiceCollectionExtensions
 
         AddCors(services, configuration, environment);
         AddRateLimiting(services, configuration);
-        AddSecurity(services);
+        AddSecurity(services, configuration, environment, requireSecurity);
         AddSwagger(services);
 
         services.AddHealthChecks()
@@ -216,22 +228,127 @@ public static class ServiceCollectionExtensions
         });
     }
 
-    private static void AddSecurity(IServiceCollection services)
+    private static void AddSecurity(
+        IServiceCollection services,
+        IConfiguration configuration,
+        IHostEnvironment environment,
+        bool requireSecurity)
     {
+        var jwt = ResolveJwtOptions(configuration, environment);
+
+        services.AddSingleton<IOptions<JwtOptions>>(Options.Create(jwt));
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<ITokenService, JwtTokenService>();
+
         services
-            .AddAuthentication(ApiKeyAuthenticationOptions.DefaultScheme)
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidIssuer = jwt.Issuer,
+                    ValidateAudience = true,
+                    ValidAudience = jwt.Audience,
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.FromSeconds(30),
+                    NameClaimType = ClaimTypes.Name,
+                    RoleClaimType = ClaimTypes.Role
+                };
+            })
             .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
                 ApiKeyAuthenticationOptions.DefaultScheme,
                 _ => { });
 
         services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = new AuthorizationPolicyBuilder()
-                .RequireAuthenticatedUser()
-                .Build();
+            if (requireSecurity)
+            {
+                options.DefaultPolicy = new AuthorizationPolicyBuilder(
+                        JwtBearerDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .Build();
 
-            options.AddPolicy(Policies.Admin, policy => policy.RequireRole("admin"));
+                options.FallbackPolicy = options.DefaultPolicy;
+
+                options.AddPolicy(Policies.Admin, policy => policy
+                    .AddAuthenticationSchemes(JwtBearerDefaults.AuthenticationScheme)
+                    .RequireAuthenticatedUser()
+                    .RequireRole("admin"));
+            }
+            else
+            {
+                // Development sin seguridad: no se exige token ni API key.
+                var openPolicy = new AuthorizationPolicyBuilder()
+                    .RequireAssertion(_ => true)
+                    .Build();
+
+                options.DefaultPolicy = openPolicy;
+                options.FallbackPolicy = openPolicy;
+                options.AddPolicy(Policies.Admin, openPolicy);
+            }
         });
+    }
+
+    /// <summary>
+    /// En Development la seguridad se puede desactivar con
+    /// Security:RequireApiKey=false. En otros entornos siempre se exige.
+    /// </summary>
+    private static bool ResolveRequireSecurity(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        if (!environment.IsDevelopment())
+        {
+            return true;
+        }
+
+        return configuration.GetValue<bool?>("Security:RequireApiKey") ?? false;
+    }
+
+    private static JwtOptions ResolveJwtOptions(
+        IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        var jwt = configuration
+            .GetSection(JwtOptions.SectionName)
+            .Get<JwtOptions>() ?? new JwtOptions();
+
+        if (string.IsNullOrWhiteSpace(jwt.Key))
+        {
+            jwt.Key = Environment.GetEnvironmentVariable("JWT_KEY") ?? string.Empty;
+        }
+
+        jwt.Key = jwt.Key.Trim();
+        jwt.Issuer = string.IsNullOrWhiteSpace(jwt.Issuer) ? "api-usuario" : jwt.Issuer.Trim();
+        jwt.Audience = string.IsNullOrWhiteSpace(jwt.Audience)
+            ? "api-usuario-clients"
+            : jwt.Audience.Trim();
+        jwt.ExpiresMinutes = Math.Clamp(jwt.ExpiresMinutes <= 0 ? 5 : jwt.ExpiresMinutes, 5, 1440);
+
+        if (string.IsNullOrWhiteSpace(jwt.Key))
+        {
+            if (environment.IsDevelopment())
+            {
+                // En desarrollo se genera una clave efimera: los tokens dejan de
+                // ser validos al reiniciar, lo cual es aceptable en local.
+                jwt.Key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+            }
+            else
+            {
+                throw new InvalidOperationException(
+                    "Falta la clave de firma JWT. Configure la variable de entorno " +
+                    "'Jwt__Key' con al menos 32 caracteres antes de iniciar la aplicacion.");
+            }
+        }
+        else if (Encoding.UTF8.GetByteCount(jwt.Key) < 32)
+        {
+            throw new InvalidOperationException("'Jwt__Key' debe tener al menos 32 caracteres.");
+        }
+
+        return jwt;
     }
 
     private static void AddSwagger(IServiceCollection services)
@@ -245,31 +362,31 @@ public static class ServiceCollectionExtensions
                 Version = "v1",
                 Description =
                     "Gestion de usuarios, ubicacion y contrasenas. " +
-                    "Todas las rutas requieren el header X-API-KEY."
+                    "Obtenga un access token en POST /api/auth/token. Las rutas " +
+                    "protegidas exigen doble validacion: Bearer {token} y X-API-KEY."
+            });
+
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Description =
+                    "Token JWT obtenido en POST /api/auth/token. " +
+                    "Formato: Bearer {accessToken}.",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT"
             });
 
             options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
             {
-                Description = "API Key enviada en el header X-API-KEY.",
+                Description = "API key requerida ademas del Bearer (doble validacion).",
                 Name = "X-API-KEY",
                 In = ParameterLocation.Header,
                 Type = SecuritySchemeType.ApiKey
             });
 
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
-                {
-                    new OpenApiSecurityScheme
-                    {
-                        Reference = new OpenApiReference
-                        {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "ApiKey"
-                        }
-                    },
-                    Array.Empty<string>()
-                }
-            });
+            options.OperationFilter<SecurityRequirementsOperationFilter>();
 
             // Oculta la estructura de los DTOs en el documento OpenAPI. Swagger
             // conserva rutas, metodos y parametros para generar las URLs/curl.
