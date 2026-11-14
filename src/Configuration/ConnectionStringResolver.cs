@@ -8,13 +8,36 @@ namespace ApiUsuario.Configuration;
 /// </summary>
 public static class ConnectionStringResolver
 {
+    /// <summary>
+    /// Nombres alternativos aceptados para no depender de un unico proveedor.
+    /// El nombre recomendado es ConnectionStrings__DefaultConnection.
+    /// </summary>
+    private static readonly string[] AlternativeVariableNames =
+    [
+        "DATABASE_URL",
+        "POSTGRES_URL",
+        "POSTGRESQL_URL",
+        "NEON_DATABASE_URL",
+        "CONNECTION_STRING",
+        // Error comun: usar un solo guion bajo en lugar de "__".
+        "ConnectionStrings_DefaultConnection"
+    ];
+
     public static string Resolve(IConfiguration configuration, bool required = true)
     {
         var connectionString = configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
+            foreach (var variableName in AlternativeVariableNames)
+            {
+                connectionString = Environment.GetEnvironmentVariable(variableName);
+
+                if (!string.IsNullOrWhiteSpace(connectionString))
+                {
+                    break;
+                }
+            }
         }
 
         if (string.IsNullOrWhiteSpace(connectionString))
@@ -25,11 +48,31 @@ public static class ConnectionStringResolver
             }
 
             throw new InvalidOperationException(
-                "No se configuro la cadena de conexion. Defina la variable de entorno " +
-                "'ConnectionStrings__DefaultConnection' (o 'DATABASE_URL') en el proveedor de hosting.");
+                "No se configuro la cadena de conexion. En el proveedor de hosting defina " +
+                "'ConnectionStrings__DefaultConnection' (con dos guiones bajos) o 'DATABASE_URL'. " +
+                $"Variables relacionadas detectadas en el entorno: {DescribeRelatedVariables()}.");
         }
 
         return Normalize(connectionString.Trim());
+    }
+
+    /// <summary>
+    /// Devuelve solo los NOMBRES de variables relacionadas (nunca sus valores) para
+    /// facilitar el diagnostico cuando falta la cadena de conexion.
+    /// </summary>
+    private static string DescribeRelatedVariables()
+    {
+        var names = Environment.GetEnvironmentVariables().Keys
+            .Cast<string>()
+            .Where(name =>
+                name.Contains("CONNECTION", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("DATABASE", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("POSTGRES", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("NEON", StringComparison.OrdinalIgnoreCase))
+            .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return names.Length == 0 ? "ninguna" : string.Join(", ", names);
     }
 
     private static string Normalize(string connectionString)
