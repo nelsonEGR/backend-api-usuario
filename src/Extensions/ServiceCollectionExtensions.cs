@@ -257,10 +257,7 @@ public static class ServiceCollectionExtensions
                     NameClaimType = ClaimTypes.Name,
                     RoleClaimType = ClaimTypes.Role
                 };
-            })
-            .AddScheme<ApiKeyAuthenticationOptions, ApiKeyAuthenticationHandler>(
-                ApiKeyAuthenticationOptions.DefaultScheme,
-                _ => { });
+            });
 
         services.AddAuthorization(options =>
         {
