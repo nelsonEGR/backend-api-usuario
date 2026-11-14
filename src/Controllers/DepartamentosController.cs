@@ -14,6 +14,12 @@ public sealed class DepartamentosController(IDepartamentoService departamentoSer
     : ControllerBase
 {
     /// <summary>Lista departamentos o consulta uno por ID.</summary>
+    /// <remarks>
+    /// Sin parametros devuelve todos los departamentos. Con 'id' devuelve uno
+    /// solo o 404 si no existe.
+    /// </remarks>
+    /// <param name="id">Identificador del departamento (opcional).</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<DepartamentoDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

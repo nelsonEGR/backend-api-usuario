@@ -15,6 +15,8 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     : ControllerBase
 {
     /// <summary>Asigna la contrasena inicial. Requiere permisos administrativos.</summary>
+    /// <param name="dto">Identificador del usuario y contrasena a asignar.</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpPost("asignar-password")]
     [Authorize(Policy = Policies.Admin)]
     [EnableRateLimiting("sensitive")]
@@ -32,6 +34,8 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     }
 
     /// <summary>Cambia la contrasena verificando la contrasena actual.</summary>
+    /// <param name="dto">Identificador, contrasena actual y nueva contrasena.</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpPatch("cambiar-password")]
     [EnableRateLimiting("sensitive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -46,6 +50,8 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     }
 
     /// <summary>Restablece la contrasena sin solicitar la actual. Requiere permisos administrativos.</summary>
+    /// <param name="dto">Identificador del usuario y nueva contrasena.</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpPatch("reset-password")]
     [Authorize(Policy = Policies.Admin)]
     [EnableRateLimiting("sensitive")]
@@ -61,6 +67,10 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
         return Ok(new { mensaje = "Contrasena restablecida correctamente" });
     }
 
+    /// <summary>Actualiza el departamento y la ciudad de un usuario.</summary>
+    /// <param name="idUsuario">Identificador del usuario.</param>
+    /// <param name="dto">Departamento y ciudad destino.</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpPut("{idUsuario:int}/ubicacion")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

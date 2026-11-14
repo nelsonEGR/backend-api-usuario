@@ -8,7 +8,8 @@ namespace ApiUsuario.Middleware;
 /// Traduce excepciones a ProblemDetails sin filtrar detalles internos de la base de datos.
 /// Incluye la propiedad "mensaje" por compatibilidad con los clientes existentes.
 /// </summary>
-public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
+public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
+    : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -41,15 +42,16 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 "Ocurrio un error inesperado. Intente nuevamente o contacte al administrador.")
         };
 
+        var method = httpContext.Request.Method;
+        var path = httpContext.Request.Path.ToString();
+
         if (statusCode >= 500)
         {
-            logger.LogError(exception, "Error no controlado en {Method} {Path}",
-                httpContext.Request.Method, httpContext.Request.Path);
+            LogUnhandledError(logger, exception, method, path);
         }
         else
         {
-            logger.LogWarning("{Status} en {Method} {Path}: {Message}",
-                statusCode, httpContext.Request.Method, httpContext.Request.Path, exception.Message);
+            LogHandledError(logger, statusCode, method, path, exception.Message);
         }
 
         if (httpContext.Response.HasStarted)
@@ -76,4 +78,25 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
 
         return true;
     }
+
+    [LoggerMessage(
+        EventId = 1000,
+        Level = LogLevel.Error,
+        Message = "Error no controlado en {Method} {Path}")]
+    private static partial void LogUnhandledError(
+        ILogger logger,
+        Exception exception,
+        string method,
+        string path);
+
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Warning,
+        Message = "{StatusCode} en {Method} {Path}: {Message}")]
+    private static partial void LogHandledError(
+        ILogger logger,
+        int statusCode,
+        string method,
+        string path,
+        string message);
 }

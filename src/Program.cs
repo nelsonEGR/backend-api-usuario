@@ -1,5 +1,6 @@
 ﻿using ApiUsuario.Configuration;
 using ApiUsuario.Extensions;
+using ApiUsuario.Logging;
 using ApiUsuario.Middleware;
 using ApiUsuario.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -27,9 +28,7 @@ if (securityOptions.IsApiKeyRequired()
 
 if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(securityOptions.AdminApiKey))
 {
-    app.Logger.LogWarning(
-        "Security:AdminApiKey no esta configurada. La API key principal tendra permisos " +
-        "administrativos. Configure 'Security__AdminApiKey' para separar ambos roles.");
+    StartupLog.AdminApiKeyMissing(app.Logger);
 }
 
 // Render termina TLS y envia X-Forwarded-For / X-Forwarded-Proto.

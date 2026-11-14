@@ -12,6 +12,13 @@ namespace ApiUsuario.Controllers;
 public sealed class CiudadesController(ICiudadService ciudadService) : ControllerBase
 {
     /// <summary>Lista ciudades, opcionalmente filtradas por ciudad o departamento.</summary>
+    /// <remarks>
+    /// Sin filtros devuelve todas las ciudades. Si los filtros no coinciden con
+    /// ningun registro, devuelve un arreglo vacio con codigo 200.
+    /// </remarks>
+    /// <param name="idCiudad">Filtra por identificador de ciudad (opcional).</param>
+    /// <param name="idDepartamento">Filtra por identificador de departamento (opcional).</param>
+    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<CiudadDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCiudades(
