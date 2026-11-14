@@ -110,6 +110,11 @@ Roles:
 El `access_token` expira en 5 minutos por defecto (`Jwt__ExpiresMinutes`). Al
 expirar, vuelva a ejecutar el login generico: no hay refresh token todavia.
 
+En **Development** la seguridad esta desactivada por defecto
+(`Security:RequireApiKey=false`): no se exige ni `access_token` ni `X-API-KEY`.
+Para probar la doble validacion en local, configure
+`Security:RequireApiKey=true`.
+
 ## 5. Ejecucion local
 
 ```powershell

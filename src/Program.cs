@@ -68,6 +68,12 @@ if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(securityOption
     StartupLog.AdminApiKeyMissing(app.Logger);
 }
 
+app.Logger.LogInformation(
+    "Seguridad: {Estado}",
+    securityOptions.IsApiKeyRequired()
+        ? "access token + API key obligatorios (doble validacion)"
+        : "desactivada en Development (sin token ni API key)");
+
 // Render termina TLS y envia X-Forwarded-For / X-Forwarded-Proto.
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {
