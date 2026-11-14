@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using ApiUsuario.Dtos;
 using ApiUsuario.Models;
 
@@ -5,7 +6,7 @@ namespace ApiUsuario.Mappings;
 
 public static class UsuarioMappings
 {
-    public static UsuarioDto ToDto(this Usuario usuario) => new()
+    public static readonly Expression<Func<Usuario, UsuarioDto>> Projection = usuario => new UsuarioDto
     {
         IdUsuario = usuario.IdUsuario,
         Nombre = usuario.Nombre,
@@ -16,4 +17,8 @@ public static class UsuarioMappings
         Estado = usuario.Estado,
         FechaAlta = usuario.FechaAlta
     };
+
+    private static readonly Func<Usuario, UsuarioDto> Map = Projection.Compile();
+
+    public static UsuarioDto ToDto(this Usuario usuario) => Map(usuario);
 }
