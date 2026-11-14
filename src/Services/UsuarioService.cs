@@ -42,17 +42,7 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
         }
 
         var items = await query
-            .Select(u => new UsuarioDto
-            {
-                IdUsuario = u.IdUsuario,
-                Nombre = u.Nombre,
-                Email = u.Email,
-                Celular = u.Celular,
-                FechaNacimiento = u.FechaNacimiento,
-                Genero = u.Genero,
-                Estado = u.Estado,
-                FechaAlta = u.FechaAlta
-            })
+            .Select(UsuarioMappings.Projection)
             .ToListAsync(cancellationToken);
 
         total = isPaginated ? total : items.Count;
@@ -68,10 +58,12 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
     {
         var usuario = await db.Usuarios
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.IdUsuario == id, cancellationToken)
+            .Where(u => u.IdUsuario == id)
+            .Select(UsuarioMappings.Projection)
+            .FirstOrDefaultAsync(cancellationToken)
             ?? throw new NotFoundException($"El usuario con ID {id} no existe.");
 
-        return usuario.ToDto();
+        return usuario;
     }
 
     public async Task<UsuarioDto> CreateAsync(UsuarioCreateDto dto, CancellationToken cancellationToken)
