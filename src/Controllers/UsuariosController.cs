@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using ApiUsuario.Common.Exceptions;
 using ApiUsuario.Dtos;
 using ApiUsuario.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -12,29 +13,32 @@ namespace ApiUsuario.Controllers;
 [Authorize]
 public sealed class UsuariosController(IUsuarioService usuarioService) : ControllerBase
 {
-    /// <summary>Lista los usuarios registrados.</summary>
+    /// <summary>Lista los usuarios registrados o consulta uno por ID.</summary>
     /// <remarks>
-    /// La paginacion es opcional: si se omiten 'page' y 'pageSize' se devuelven
-    /// todos los usuarios (comportamiento historico). Si se envian, la respuesta
-    /// incluye el header 'X-Total-Count' con el total de registros disponibles.
+    /// Sin parametros devuelve todos los usuarios. Si se envia 'id' devuelve un
+    /// solo usuario, o 404 si no existe. La paginacion es opcional y solo aplica
+    /// cuando no se envia 'id': agregue '?page=1&amp;pageSize=50' en la URL.
+    /// La respuesta paginada incluye el header 'X-Total-Count'.
     /// </remarks>
-    /// <param name="page">
-    /// Numero de pagina, comenzando en 1. Omitir para no paginar.
-    /// Si solo se envia pageSize, page toma el valor 1. Valores menores a 1 se
-    /// ajustan a 1.
-    /// </param>
-    /// <param name="pageSize">
-    /// Cantidad de registros por pagina. Omitir para no paginar.
-    /// Si se envia, el valor se ajusta entre 1 y 200 (por defecto 50).
-    /// </param>
+    /// <param name="id">Identificador del usuario (opcional).</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<UsuarioDto>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyList<UsuarioDto>>> GetUsuarios(
-        [FromQuery] int? page,
-        [FromQuery] int? pageSize,
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetUsuarios(
+        [FromQuery] int? id,
         CancellationToken cancellationToken)
     {
+        if (id.HasValue)
+        {
+            var usuario = await usuarioService.GetByIdAsync(id.Value, cancellationToken);
+            return Ok(usuario);
+        }
+
+        var page = ReadOptionalInt("page");
+        var pageSize = ReadOptionalInt("pageSize");
+
         var result = await usuarioService.GetAllAsync(page, pageSize, cancellationToken);
 
         Response.Headers["X-Total-Count"] = result.Total.ToString(CultureInfo.InvariantCulture);
@@ -136,5 +140,26 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
         var usuario = await usuarioService.DeactivateAsync(id, cancellationToken);
 
         return Ok(new { mensaje = $"La cuenta de {usuario.Nombre} se desactivo correctamente." });
+    }
+
+    /// <summary>
+    /// Lee un parametro opcional de la query string sin exponerlo en Swagger.
+    /// Devuelve null si no se envio y 400 si no es un entero valido.
+    /// </summary>
+    private int? ReadOptionalInt(string name)
+    {
+        var raw = Request.Query[name].ToString();
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+        {
+            throw new BadRequestException($"El parametro '{name}' debe ser un numero entero.");
+        }
+
+        return value;
     }
 }

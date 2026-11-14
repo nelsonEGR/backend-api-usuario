@@ -5,6 +5,7 @@ using ApiUsuario.HealthChecks;
 using ApiUsuario.Middleware;
 using ApiUsuario.Security;
 using ApiUsuario.Services;
+using ApiUsuario.Swagger;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -245,8 +246,8 @@ public static class ServiceCollectionExtensions
                 Description =
                     "API para la gestion de usuarios, ubicacion y contrasenas. " +
                     "Todas las rutas requieren el header X-API-KEY. " +
-                    "En GET /api/Usuarios los parametros page y pageSize son opcionales: " +
-                    "si se omiten se devuelven todos los usuarios."
+                    "En GET /api/Usuarios: sin parametros devuelve todos los usuarios, " +
+                    "'?id=' devuelve uno solo y '?page='/'?pageSize=' permiten paginar."
             });
 
             options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
@@ -271,6 +272,8 @@ public static class ServiceCollectionExtensions
                     Array.Empty<string>()
                 }
             });
+
+            options.OperationFilter<UsuariosGetResponseOperationFilter>();
 
             // Incluye los comentarios XML del proyecto en Swagger para documentar
             // parametros y respuestas directamente en la UI.
