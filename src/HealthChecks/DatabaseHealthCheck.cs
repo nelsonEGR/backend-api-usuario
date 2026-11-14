@@ -1,9 +1,14 @@
 using ApiUsuario.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ApiUsuario.HealthChecks;
 
-/// <summary>Verifica que la base de datos PostgreSQL responda.</summary>
+/// <summary>
+/// Verifica que PostgreSQL responda y que existan las tablas y columnas que usa
+/// la aplicacion. Asi se detecta una base vacia o apuntando a otra rama antes de
+/// que los endpoints empiecen a devolver 500.
+/// </summary>
 public sealed class DatabaseHealthCheck(IServiceScopeFactory scopeFactory) : IHealthCheck
 {
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -15,16 +20,23 @@ public sealed class DatabaseHealthCheck(IServiceScopeFactory scopeFactory) : IHe
             await using var scope = scopeFactory.CreateAsyncScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            var canConnect = await db.Database.CanConnectAsync(cancellationToken);
+            if (!await db.Database.CanConnectAsync(cancellationToken))
+            {
+                return HealthCheckResult.Unhealthy("No fue posible conectar con la base de datos.");
+            }
 
-            return canConnect
-                ? HealthCheckResult.Healthy("Base de datos disponible.")
-                : HealthCheckResult.Unhealthy("No fue posible conectar con la base de datos.");
+            // Take(1) valida tabla y columnas mapeadas sin traer datos masivos.
+            await db.Usuarios.AsNoTracking().Take(1).ToListAsync(cancellationToken);
+            await db.Departamentos.AsNoTracking().Take(1).ToListAsync(cancellationToken);
+            await db.Ciudades.AsNoTracking().Take(1).ToListAsync(cancellationToken);
+            await db.UsuarioDetalles.AsNoTracking().Take(1).ToListAsync(cancellationToken);
+
+            return HealthCheckResult.Healthy("Base de datos y esquema disponibles.");
         }
         catch (Exception exception)
         {
             return HealthCheckResult.Unhealthy(
-                "No fue posible conectar con la base de datos.",
+                "La base de datos no responde o no tiene el esquema esperado.",
                 exception);
         }
     }
