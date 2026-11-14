@@ -8,9 +8,15 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Context;
+using Serilog.Debugging;
 using Serilog.Sinks.Grafana.Loki;
 
 var builder = WebApplication.CreateBuilder(args);
+
+if (builder.Configuration.GetValue<bool>("Serilog:SelfLog"))
+{
+    SelfLog.Enable(Console.Error.WriteLine);
+}
 
 // Render inyecta PORT; en otros entornos se respeta ASPNETCORE_URLS.
 builder.WebHost.ConfigureRenderPort();
@@ -42,6 +48,10 @@ builder.Host.UseSerilog((context, services, configuration) =>
 builder.Services.AddApiServices(builder.Configuration, builder.Environment);
 
 var app = builder.Build();
+
+app.Logger.LogInformation(
+    "Logging configurado. Loki: {Estado}",
+    string.IsNullOrWhiteSpace(builder.Configuration["Loki:Url"]) ? "deshabilitado" : "habilitado");
 
 var securityOptions = app.Services.GetRequiredService<IOptions<SecurityOptions>>().Value;
 
