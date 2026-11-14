@@ -9,7 +9,14 @@
 *.user
 *.userosscache
 *.sln.docstates
-*.env
+
+# Secretos y configuracion local (NUNCA versionar)
+.env
+.env.*
+!.env.example
+appsettings.Production.json
+appsettings.Local.json
+secrets.json
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

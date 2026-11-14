@@ -1,8 +1,7 @@
-﻿namespace api_usuario.Dtos
+﻿namespace ApiUsuario.Dtos;
+
+public sealed class DepartamentoDto
 {
-    public class DepartamentoDto
-    {
-        public int IdDepartamento { get; set; }
-        public string NombreDepartamento { get; set; } = string.Empty;
-    }
+    public int IdDepartamento { get; set; }
+    public string NombreDepartamento { get; set; } = string.Empty;
 }
