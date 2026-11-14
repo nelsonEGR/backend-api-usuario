@@ -25,12 +25,13 @@ public sealed class AuthController(
     /// <remarks>
     /// Body de ejemplo:
     ///
-    ///     { "clientId": "generic-client", "clientSecret": "TU_API_KEY" }
+    ///     { "clientSecret": "TU_API_KEY" }
     ///
-    /// 'clientId' es opcional (default "generic-client"). 'clientSecret' debe ser
-    /// el valor configurado en 'Security:ApiKey' (rol client) o en
+    /// No requiere headers de autenticacion. 'clientSecret' debe ser el valor
+    /// configurado en 'Security:ApiKey' (rol client) o en
     /// 'Security:AdminApiKey' (rol admin). El token devuelto debe usarse en el
-    /// resto de endpoints como 'Authorization: Bearer {accessToken}'.
+    /// resto de endpoints como 'Authorization: Bearer {accessToken}'; no hace
+    /// falta enviar la API key.
     /// </remarks>
     /// <param name="request">Credenciales del cliente de servicio.</param>
     [HttpPost("token")]
@@ -44,17 +45,8 @@ public sealed class AuthController(
         [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] TokenRequestDto? request)
     {
         var security = securityOptions.Value;
-        var clientId = string.IsNullOrWhiteSpace(request?.ClientId)
-            ? "generic-client"
-            : request.ClientId.Trim();
-
-        if (clientId.Length > 100)
-        {
-            throw new BadRequestException("El 'clientId' no puede superar 100 caracteres.");
-        }
-
         var isAdmin = Authenticate(request?.ClientSecret, security);
-        var token = tokenService.CreateAccessToken(clientId, isAdmin);
+        var token = tokenService.CreateAccessToken(isAdmin);
 
         return Ok(new TokenResponseDto
         {

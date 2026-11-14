@@ -6,14 +6,14 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 namespace ApiUsuario.Swagger;
 
 /// <summary>
-/// Marca cada operacion con doble validacion (Bearer + X-API-KEY) salvo las
-/// que son anonimas (por ejemplo, el login generico). Asi Swagger envia ambos
-/// headers en las peticiones protegidas.
+/// Marca cada operacion protegida con el esquema Bearer. Las operaciones
+/// anonimas (por ejemplo, el login generico) quedan sin requisitos de
+/// seguridad. La API key no se envia como header: solo se usa como
+/// 'clientSecret' al solicitar el token.
 /// </summary>
 public sealed class SecurityRequirementsOperationFilter : IOperationFilter
 {
     private const string BearerSchemeId = "Bearer";
-    private const string ApiKeySchemeId = "ApiKey";
 
     public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
@@ -23,11 +23,7 @@ public sealed class SecurityRequirementsOperationFilter : IOperationFilter
             return;
         }
 
-        operation.Security =
-        [
-            Requirement(BearerSchemeId),
-            Requirement(ApiKeySchemeId)
-        ];
+        operation.Security = [Requirement(BearerSchemeId)];
     }
 
     private static OpenApiSecurityRequirement Requirement(string schemeId) =>

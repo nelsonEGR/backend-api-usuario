@@ -49,7 +49,7 @@ public sealed class AuthControllerTests
             });
 
         var result = controller.CreateToken(
-            new TokenRequestDto { ClientId = "servicio", ClientSecret = "admin-key" });
+            new TokenRequestDto { ClientSecret = "admin-key" });
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<TokenResponseDto>(ok.Value);
@@ -78,20 +78,6 @@ public sealed class AuthControllerTests
         var response = Assert.IsType<TokenResponseDto>(ok.Value);
 
         Assert.True(Validate(response.AccessToken).IsInRole("admin"));
-    }
-
-    [Fact]
-    public void CreateToken_ClientIdMuyLargo_LanzaBadRequest()
-    {
-        var controller = CreateController(
-            new SecurityOptions { ApiKey = "client-key", RequireApiKey = true });
-
-        Assert.Throws<BadRequestException>(() =>
-            controller.CreateToken(new TokenRequestDto
-            {
-                ClientId = new string('a', 101),
-                ClientSecret = "client-key"
-            }));
     }
 
     private static AuthController CreateController(SecurityOptions security)

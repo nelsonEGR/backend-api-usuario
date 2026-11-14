@@ -17,12 +17,12 @@ public sealed class JwtTokenServiceTests
     {
         var service = CreateService();
 
-        var result = service.CreateAccessToken("mi-cliente", isAdmin: false);
+        var result = service.CreateAccessToken(isAdmin: false);
         var principal = Validate(result.AccessToken);
 
         Assert.False(string.IsNullOrWhiteSpace(result.AccessToken));
         Assert.Equal("Bearer", result.TokenType);
-        Assert.Equal("mi-cliente", principal.FindFirstValue(ClaimTypes.NameIdentifier));
+        Assert.Equal("generic-client", principal.FindFirstValue(ClaimTypes.NameIdentifier));
         Assert.True(principal.IsInRole("client"));
         Assert.Equal(300, result.ExpiresIn);
     }
@@ -32,7 +32,7 @@ public sealed class JwtTokenServiceTests
     {
         var service = CreateService();
 
-        var result = service.CreateAccessToken("admin-cliente", isAdmin: true);
+        var result = service.CreateAccessToken(isAdmin: true);
         var principal = Validate(result.AccessToken);
 
         Assert.True(principal.IsInRole("admin"));
@@ -44,7 +44,7 @@ public sealed class JwtTokenServiceTests
         var service = CreateService();
         var before = DateTimeOffset.UtcNow;
 
-        var result = service.CreateAccessToken("cliente", isAdmin: false);
+        var result = service.CreateAccessToken(isAdmin: false);
 
         Assert.InRange(
             result.ExpiresAt,

@@ -71,7 +71,7 @@ if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(securityOption
 app.Logger.LogInformation(
     "Seguridad: {Estado}",
     securityOptions.IsApiKeyRequired()
-        ? "access token + API key obligatorios (doble validacion)"
+        ? "access token obligatorio en rutas protegidas; API key requerida como clientSecret en /api/auth/token"
         : "desactivada en Development (sin token ni API key)");
 
 // Render termina TLS y envia X-Forwarded-For / X-Forwarded-Proto.
@@ -127,7 +127,6 @@ app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
-app.UseMiddleware<ApiKeyValidationMiddleware>();
 app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok("API corriendo")).AllowAnonymous();

@@ -51,12 +51,6 @@ public sealed class HideSchemasDocumentFilter : IDocumentFilter
             Required = new HashSet<string> { "clientSecret" },
             Properties = new Dictionary<string, OpenApiSchema>
             {
-                ["clientId"] = new OpenApiSchema
-                {
-                    Type = "string",
-                    Nullable = true,
-                    Description = "Opcional. Identificador del cliente. Default: generic-client."
-                },
                 ["clientSecret"] = new OpenApiSchema
                 {
                     Type = "string",

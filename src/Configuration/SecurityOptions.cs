@@ -7,7 +7,10 @@ public sealed class SecurityOptions
 {
     public const string SectionName = "Security";
 
-    /// <summary>API key principal que envian los clientes en el header X-API-KEY.</summary>
+    /// <summary>
+    /// API key principal. Se envia como 'clientSecret' en POST /api/auth/token
+    /// para obtener el access token; no se usa como header en el resto de rutas.
+    /// </summary>
     public string? ApiKey { get; set; }
 
     /// <summary>

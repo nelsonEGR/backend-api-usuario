@@ -10,5 +10,5 @@ public sealed record TokenResult(
 /// <summary>Emite access tokens JWT para clientes autenticados.</summary>
 public interface ITokenService
 {
-    TokenResult CreateAccessToken(string clientId, bool isAdmin);
+    TokenResult CreateAccessToken(bool isAdmin);
 }

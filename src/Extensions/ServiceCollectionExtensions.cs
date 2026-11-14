@@ -362,8 +362,9 @@ public static class ServiceCollectionExtensions
                 Version = "v1",
                 Description =
                     "Gestion de usuarios, ubicacion y contrasenas. " +
-                    "Obtenga un access token en POST /api/auth/token. Las rutas " +
-                    "protegidas exigen doble validacion: Bearer {token} y X-API-KEY."
+                    "Obtenga un access token en POST /api/auth/token (sin headers, " +
+                    "usando la API key como clientSecret). Las rutas protegidas " +
+                    "exigen Authorization: Bearer {token}."
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -376,14 +377,6 @@ public static class ServiceCollectionExtensions
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT"
-            });
-
-            options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
-            {
-                Description = "API key requerida ademas del Bearer (doble validacion).",
-                Name = "X-API-KEY",
-                In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey
             });
 
             options.OperationFilter<SecurityRequirementsOperationFilter>();

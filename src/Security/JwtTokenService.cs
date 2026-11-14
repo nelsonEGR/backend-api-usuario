@@ -15,21 +15,23 @@ public sealed class JwtTokenService(
     IOptions<JwtOptions> options,
     TimeProvider timeProvider) : ITokenService
 {
+    private const string ClientId = "generic-client";
+
     private static readonly JwtSecurityTokenHandler Handler = new();
 
     private readonly JwtOptions _options = options.Value;
     private readonly TimeProvider _timeProvider = timeProvider;
 
-    public TokenResult CreateAccessToken(string clientId, bool isAdmin)
+    public TokenResult CreateAccessToken(bool isAdmin)
     {
         var now = _timeProvider.GetUtcNow();
         var expiresAt = now.AddMinutes(_options.ExpiresMinutes);
 
         var claims = new List<Claim>
         {
-            new(JwtRegisteredClaimNames.Sub, clientId),
-            new(ClaimTypes.NameIdentifier, clientId),
-            new(ClaimTypes.Name, clientId),
+            new(JwtRegisteredClaimNames.Sub, ClientId),
+            new(ClaimTypes.NameIdentifier, ClientId),
+            new(ClaimTypes.Name, ClientId),
             new(ClaimTypes.Role, isAdmin ? "admin" : "client"),
             new("client_type", isAdmin ? "admin" : "generic"),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N"))
