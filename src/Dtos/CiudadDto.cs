@@ -1,9 +1,8 @@
-﻿namespace api.Dtos
+﻿namespace ApiUsuario.Dtos;
+
+public sealed class CiudadDto
 {
-    public class CiudadDto
-    {
-        public int IdCiudad { get; set; }
-        public string NombreCiudad { get; set; } = string.Empty;
-        public int IdDepartamento { get; set; }
-    }
+    public int IdCiudad { get; set; }
+    public string NombreCiudad { get; set; } = string.Empty;
+    public int IdDepartamento { get; set; }
 }
