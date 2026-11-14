@@ -1,15 +1,12 @@
-﻿// Models/Ciudad.cs
-using api_usuario.Models;
+﻿namespace ApiUsuario.Models;
 
-namespace api.Models
+public sealed class Ciudad
 {
-    public class Ciudad
-    {
-        public int IdCiudad { get; set; }
-        public string NombreCiudad { get; set; } = string.Empty;
+    public int IdCiudad { get; set; }
 
-        // FK
-        public int IdDepartamento { get; set; }
-        public Departamento? Departamento { get; set; }
-    }
+    public string NombreCiudad { get; set; } = string.Empty;
+
+    public int IdDepartamento { get; set; }
+
+    public Departamento? Departamento { get; set; }
 }

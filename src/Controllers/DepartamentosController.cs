@@ -1,61 +1,35 @@
-﻿using api_usuario.Data;
-using api_usuario.Dtos;      // 👈 Cambié para que apunte al namespace correcto
-using api_usuario.Models;    // 👈 Cambié para que apunte al namespace correcto
+﻿using ApiUsuario.Common.Exceptions;
+using ApiUsuario.Dtos;
+using ApiUsuario.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
-namespace api_usuario.Controllers // 👈 Cambié para mantener coherencia con el proyecto
+namespace ApiUsuario.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+[Authorize]
+public sealed class DepartamentosController(IDepartamentoService departamentoService)
+    : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class DepartamentosController : ControllerBase
+    /// <summary>Lista departamentos o consulta uno por ID.</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<DepartamentoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetDepartamentos(
+        [FromQuery] int? id,
+        CancellationToken cancellationToken)
     {
-        private readonly AppDbContext _context;
-
-        public DepartamentosController(AppDbContext context)
+        if (id.HasValue)
         {
-            _context = context;
+            var departamento = await departamentoService.GetByIdAsync(id.Value, cancellationToken)
+                ?? throw new NotFoundException($"No existe el departamento con ID {id.Value}");
+
+            return Ok(departamento);
         }
 
-        // GET /api/departamentos
-        // GET /api/departamentos?id=1
-        [HttpGet]
-        public async Task<IActionResult> GetDepartamentos([FromQuery] int? id)
-        {
-            if (id.HasValue)
-            {
-                var departamento = await _context.Departamentos
-                    .Where(d => d.IdDepartamento == id.Value)
-                    .Select(d => new DepartamentoDto
-                    {
-                        IdDepartamento = d.IdDepartamento,
-                        NombreDepartamento = d.NombreDepartamento
-                    })
-                    .FirstOrDefaultAsync();
-
-                if (departamento == null)
-                {
-                    return BadRequest(new
-                    {
-                        codigo = 400,
-                        mensaje = $"No existe el departamento con ID {id.Value}"
-                    });
-                }
-
-                return Ok(departamento);
-            }
-            else
-            {
-                var departamentos = await _context.Departamentos
-                    .Select(d => new DepartamentoDto
-                    {
-                        IdDepartamento = d.IdDepartamento,
-                        NombreDepartamento = d.NombreDepartamento
-                    })
-                    .ToListAsync();
-
-                return Ok(departamentos);
-            }
-        }
+        var departamentos = await departamentoService.GetAllAsync(cancellationToken);
+        return Ok(departamentos);
     }
 }

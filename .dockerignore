@@ -1,0 +1,32 @@
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# IDE / OS
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+.DS_Store
+Thumbs.db
+
+# Source control / docs
+.git/
+.gitignore
+.github/
+docs/
+*.md
+
+# Tests and local only
+tests/
+docker-compose*.yml
+.env
+.env.*
+!.env.example
+
+# Misc
+*.log
+*.tmp
+*.bak

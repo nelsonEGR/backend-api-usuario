@@ -1,55 +1,26 @@
-﻿using api.Dtos;
-using api_usuario.Data;
-using api_usuario.Dtos;
-using api_usuario.Models;
+﻿using ApiUsuario.Dtos;
+using ApiUsuario.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
-namespace api_usuario.Controllers
+namespace ApiUsuario.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+[Authorize]
+public sealed class CiudadesController(ICiudadService ciudadService) : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class CiudadesController : ControllerBase
+    /// <summary>Lista ciudades, opcionalmente filtradas por ciudad o departamento.</summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<CiudadDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCiudades(
+        [FromQuery(Name = "id_ciudad")] int? idCiudad,
+        [FromQuery(Name = "id_departamento")] int? idDepartamento,
+        CancellationToken cancellationToken)
     {
-        private readonly AppDbContext _context;
+        var ciudades = await ciudadService.GetAsync(idCiudad, idDepartamento, cancellationToken);
 
-        public CiudadesController(AppDbContext context)
-        {
-            _context = context;
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetCiudades(
-            [FromQuery(Name = "id_ciudad")] int? idCiudad,
-            [FromQuery(Name = "id_departamento")] int? idDepartamento)
-        {
-            var query = _context.Ciudades.AsQueryable();
-
-            if (idCiudad.HasValue)
-                query = query.Where(c => c.IdCiudad == idCiudad.Value);
-
-            if (idDepartamento.HasValue)
-                query = query.Where(c => c.IdDepartamento == idDepartamento.Value);
-
-            var ciudades = await query
-                .Select(c => new CiudadDto
-                {
-                    IdCiudad = c.IdCiudad,
-                    NombreCiudad = c.NombreCiudad,
-                    IdDepartamento = c.IdDepartamento
-                })
-                .ToListAsync();
-
-            if (ciudades.Count == 0)
-            {
-                return BadRequest(new
-                {
-                    codigo = 400,
-                    mensaje = "No se encontraron ciudades con los filtros especificados"
-                });
-            }
-
-            return Ok(ciudades);
-        }
+        return Ok(ciudades);
     }
 }
