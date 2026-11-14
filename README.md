@@ -139,6 +139,7 @@ Todas las rutas requieren `X-API-KEY` salvo `/`, `/health` y Swagger.
 | GET | `/` | Verificacion simple de que el proceso responde. |
 | GET | `/health` | Estado del proceso, conexion a PostgreSQL y esquema (tablas/columnas). Usar en Render. |
 | GET | `/api/usuarios` | Lista todos los usuarios (comportamiento historico). |
+| GET | `/api/usuarios?id=1` | Consulta un usuario por ID (equivale a `/api/usuarios/1`). |
 | GET | `/api/usuarios?page=1&pageSize=50` | Igual, pero paginado. Parametros opcionales. |
 | GET | `/api/usuarios/{id}` | Consulta un usuario. |
 | POST | `/api/usuarios` | Crea un usuario (nace inactivo). |
@@ -153,14 +154,18 @@ Todas las rutas requieren `X-API-KEY` salvo `/`, `/health` y Swagger.
 | GET | `/api/departamentos?id=1` | Lista o consulta departamentos. |
 | GET | `/api/ciudades?id_ciudad=1&id_departamento=1` | Lista o filtra ciudades. |
 
-La paginacion es opcional: `page` y `pageSize` solo se aplican si se envian.
-Sin ellos, `GET /api/usuarios` devuelve todos los registros como antes. Cuando se
-paginan, la respuesta sigue siendo un arreglo y se agrega el header
+La paginacion es opcional: `page` y `pageSize` solo se aplican si se envian en la
+URL. Sin ellos, `GET /api/usuarios` devuelve todos los registros como antes.
+Cuando se paginan, la respuesta sigue siendo un arreglo y se agrega el header
 `X-Total-Count` con el total de registros.
 
-> En Swagger, el boton **Try it out** recuerda los valores escritos en `page` y
-> `pageSize` y los incluye en el curl generado. Deje ambos campos vacios para
-> obtener la URL limpia `/api/usuarios`.
+Con `?id=` la respuesta es un **objeto** (o 404 si no existe); sin `?id` es un
+**arreglo**, por lo que los clientes actuales que consumen
+`GET /api/usuarios` no se ven afectados.
+
+> En Swagger solo se muestra el campo opcional `id`. Los parametros `page` y
+> `pageSize` se mantienen ocultos para no saturar el endpoint; para probar la
+> paginacion use la URL `?page=1&pageSize=50` en Postman o Bruno.
 
 Los errores usan `application/problem+json` e incluyen la propiedad `mensaje`
 por compatibilidad con el frontend anterior.
