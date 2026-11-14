@@ -313,6 +313,8 @@ sin exponerla al cliente.
   hay conflicto) y el cuerpo incluye `mensaje` para el frontend.
 - Swagger queda apagado en produccion por defecto. Active
   `Swagger__Enabled=true` solo si lo necesita.
+- Cuando Swagger esta activo, no expone las definiciones de los DTOs: solo
+  rutas, metodos y parametros (suficiente para generar las URLs/curl).
 
 ## 9. Seguridad
 
