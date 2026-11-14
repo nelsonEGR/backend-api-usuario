@@ -2,7 +2,6 @@
 using ApiUsuario.Extensions;
 using ApiUsuario.Logging;
 using ApiUsuario.Middleware;
-using ApiUsuario.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
