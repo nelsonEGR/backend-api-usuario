@@ -15,10 +15,7 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
 {
     /// <summary>Lista todos los usuarios o consulta uno por '?id'.</summary>
     /// <remarks>
-    /// Con '?id=N' devuelve un usuario (204 si no existe). Sin 'id' devuelve todos
-    /// (204 si no hay registros). Paginacion opcional solo sin 'id':
-    /// '?page=1&amp;pageSize=50'. En ese caso la respuesta incluye el header
-    /// 'X-Total-Count'.
+    /// Sin 'id' devuelve todos
     /// </remarks>
     /// <param name="id">ID del usuario. Omitir para listar todos.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>

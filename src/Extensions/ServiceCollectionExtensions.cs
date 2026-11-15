@@ -433,10 +433,7 @@ public static class ServiceCollectionExtensions
                 Title = "API Usuario",
                 Version = "v1",
                 Description =
-                    "Gestion de usuarios, ubicacion y contrasenas. " +
-                    "Obtenga un access token en POST /api/auth/token enviando la " +
-                    "API key en la cabecera X-API-KEY. Todas las rutas protegidas " +
-                    "exigen Authorization: Bearer {token} y la cabecera X-API-KEY."
+                    "Gestion de usuarios, ubicacion y contrasenas. "
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme

@@ -10,8 +10,7 @@ using Microsoft.Extensions.Options;
 namespace ApiUsuario.Controllers;
 
 /// <summary>
-/// Emision de tokens de acceso. Por ahora solo existe el login generico de
-/// servicios; mas adelante se agregara el login de usuarios.
+/// Emision de tokens de acceso. 
 /// </summary>
 [ApiController]
 [Route("api/auth")]
