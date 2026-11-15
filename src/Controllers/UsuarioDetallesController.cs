@@ -1,4 +1,4 @@
-﻿using ApiUsuario.Dtos;
+using ApiUsuario.Dtos;
 using ApiUsuario.Security;
 using ApiUsuario.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -22,8 +22,6 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     [EnableRateLimiting("sensitive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> AsignarPassword(
         [FromBody] UsuarioPasswordDto dto,
         CancellationToken cancellationToken)
@@ -57,7 +55,6 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     [EnableRateLimiting("sensitive")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(
         [FromBody] UsuarioResetPasswordAdminDto dto,
         CancellationToken cancellationToken)
@@ -71,10 +68,9 @@ public sealed class UsuarioDetallesController(IUsuarioDetalleService usuarioDeta
     /// <param name="idUsuario">Identificador del usuario.</param>
     /// <param name="dto">Departamento y ciudad destino.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpPut("{idUsuario:int}/ubicacion")]
+    [HttpPut("{idUsuario}/ubicacion")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ActualizarUbicacionUsuario(
         int idUsuario,
         [FromBody] UsuarioUbicacionDto dto,

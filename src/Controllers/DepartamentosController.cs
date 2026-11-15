@@ -1,5 +1,4 @@
-﻿using ApiUsuario.Common.Exceptions;
-using ApiUsuario.Dtos;
+﻿using ApiUsuario.Dtos;
 using ApiUsuario.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -16,26 +15,26 @@ public sealed class DepartamentosController(IDepartamentoService departamentoSer
     /// <summary>Lista departamentos o consulta uno por ID.</summary>
     /// <remarks>
     /// Sin parametros devuelve todos los departamentos. Con 'id' devuelve uno
-    /// solo o 404 si no existe.
+    /// solo o 204 si no existe.
     /// </remarks>
     /// <param name="id">Identificador del departamento (opcional).</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<DepartamentoDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> GetDepartamentos(
         [FromQuery] int? id,
         CancellationToken cancellationToken)
     {
         if (id.HasValue)
         {
-            var departamento = await departamentoService.GetByIdAsync(id.Value, cancellationToken)
-                ?? throw new NotFoundException($"No existe el departamento con ID {id.Value}");
+            var departamento = await departamentoService.GetByIdAsync(id.Value, cancellationToken);
 
-            return Ok(departamento);
+            return departamento is null ? NoContent() : Ok(departamento);
         }
 
         var departamentos = await departamentoService.GetAllAsync(cancellationToken);
-        return Ok(departamentos);
+
+        return departamentos.Count == 0 ? NoContent() : Ok(departamentos);
     }
 }

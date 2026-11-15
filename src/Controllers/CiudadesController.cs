@@ -14,13 +14,14 @@ public sealed class CiudadesController(ICiudadService ciudadService) : Controlle
     /// <summary>Lista ciudades, opcionalmente filtradas por ciudad o departamento.</summary>
     /// <remarks>
     /// Sin filtros devuelve todas las ciudades. Si los filtros no coinciden con
-    /// ningun registro, devuelve un arreglo vacio con codigo 200.
+    /// ningun registro, devuelve 204 sin cuerpo.
     /// </remarks>
     /// <param name="idCiudad">Filtra por identificador de ciudad (opcional).</param>
     /// <param name="idDepartamento">Filtra por identificador de departamento (opcional).</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<CiudadDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> GetCiudades(
         [FromQuery(Name = "id_ciudad")] int? idCiudad,
         [FromQuery(Name = "id_departamento")] int? idDepartamento,
@@ -28,6 +29,6 @@ public sealed class CiudadesController(ICiudadService ciudadService) : Controlle
     {
         var ciudades = await ciudadService.GetAsync(idCiudad, idDepartamento, cancellationToken);
 
-        return Ok(ciudades);
+        return ciudades.Count == 0 ? NoContent() : Ok(ciudades);
     }
 }

@@ -78,6 +78,33 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPasswordHasher, BCryptPasswordHasher>();
 
         services.AddControllers()
+            .AddMvcOptions(options =>
+            {
+                var messages = options.ModelBindingMessageProvider;
+
+                messages.SetValueMustNotBeNullAccessor(
+                    _ => "El valor es obligatorio.");
+                messages.SetAttemptedValueIsInvalidAccessor(
+                    (value, field) => $"El valor '{value}' no es valido para '{field}'.");
+                messages.SetMissingBindRequiredValueAccessor(
+                    field => $"Falta el valor requerido para '{field}'.");
+                messages.SetMissingKeyOrValueAccessor(
+                    () => "Falta un valor requerido.");
+                messages.SetMissingRequestBodyRequiredValueAccessor(
+                    () => "El cuerpo de la solicitud es obligatorio.");
+                messages.SetNonPropertyAttemptedValueIsInvalidAccessor(
+                    value => $"El valor '{value}' no es valido.");
+                messages.SetNonPropertyUnknownValueIsInvalidAccessor(
+                    () => "El valor enviado no es valido.");
+                messages.SetNonPropertyValueMustBeANumberAccessor(
+                    () => "El valor debe ser un numero.");
+                messages.SetUnknownValueIsInvalidAccessor(
+                    field => $"El valor enviado para '{field}' no es valido.");
+                messages.SetValueIsInvalidAccessor(
+                    value => $"El valor '{value}' no es valido.");
+                messages.SetValueMustBeANumberAccessor(
+                    field => $"El valor de '{field}' debe ser un numero.");
+            })
             .ConfigureApiBehaviorOptions(options =>
             {
                 options.InvalidModelStateResponseFactory = context =>
