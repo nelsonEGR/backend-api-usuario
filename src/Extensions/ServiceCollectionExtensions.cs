@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.RateLimiting;
 using ApiUsuario.Common.Errors;
 using ApiUsuario.Common.Http;
@@ -26,6 +27,9 @@ namespace ApiUsuario.Extensions;
 
 public static class ServiceCollectionExtensions
 {
+    private static readonly JsonSerializerOptions ProblemJsonOptions =
+        new(JsonSerializerDefaults.Web);
+
     public static IServiceCollection AddApiServices(
         this IServiceCollection services,
         IConfiguration configuration,
@@ -146,9 +150,11 @@ public static class ServiceCollectionExtensions
                     problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
                     problem.Extensions["errores"] = errors;
 
-                    return new BadRequestObjectResult(problem)
+                    return new ContentResult
                     {
-                        ContentTypes = { "application/problem+json" }
+                        Content = JsonSerializer.Serialize(problem, ProblemJsonOptions),
+                        ContentType = "application/problem+json",
+                        StatusCode = StatusCodes.Status400BadRequest
                     };
                 };
             });

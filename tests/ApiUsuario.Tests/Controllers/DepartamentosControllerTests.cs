@@ -1,4 +1,3 @@
-using ApiUsuario.Common.Exceptions;
 using ApiUsuario.Controllers;
 using ApiUsuario.Data;
 using ApiUsuario.Dtos;
@@ -45,13 +44,25 @@ public sealed class DepartamentosControllerTests
     }
 
     [Fact]
-    public async Task GetDepartamentos_ConIdInexistente_LanzaNotFound()
+    public async Task GetDepartamentos_SinRegistros_Devuelve204()
     {
         await using var db = TestDb.Create();
         var controller = CreateController(db);
 
-        await Assert.ThrowsAsync<NotFoundException>(() =>
-            controller.GetDepartamentos(99, CancellationToken.None));
+        var result = await controller.GetDepartamentos(null, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+    }
+
+    [Fact]
+    public async Task GetDepartamentos_ConIdInexistente_Devuelve204()
+    {
+        await using var db = TestDb.Create();
+        var controller = CreateController(db);
+
+        var result = await controller.GetDepartamentos(99, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
     }
 
     private static DepartamentosController CreateController(AppDbContext db)

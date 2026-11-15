@@ -59,7 +59,29 @@ public sealed class UsuariosControllerTests
     }
 
     [Fact]
-    public async Task PostUsuario_Valido_DevuelveCreatedAtAction()
+    public async Task GetUsuarios_SinRegistros_Devuelve204()
+    {
+        await using var db = TestDb.Create();
+        var controller = CreateController(db);
+
+        var result = await controller.GetUsuarios(null, CancellationToken.None);
+
+        Assert.IsType<NoContentResult>(result);
+        Assert.Equal("0", controller.Response.Headers["X-Total-Count"].ToString());
+    }
+
+    [Fact]
+    public async Task GetUsuarios_ConIdInexistente_LanzaNotFound()
+    {
+        await using var db = TestDb.Create();
+        var controller = CreateController(db);
+
+        await Assert.ThrowsAsync<NotFoundException>(() =>
+            controller.GetUsuarios(99, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task PostUsuario_Valido_DevuelveOk()
     {
         await using var db = TestDb.Create();
         var controller = CreateController(db);
@@ -72,8 +94,8 @@ public sealed class UsuariosControllerTests
             Genero = 'F'
         }, CancellationToken.None);
 
-        var created = Assert.IsType<CreatedAtActionResult>(result.Result);
-        Assert.IsType<UsuarioDto>(created.Value);
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.IsType<UsuarioDto>(ok.Value);
         Assert.Equal(1, await db.Usuarios.CountAsync());
     }
 

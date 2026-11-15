@@ -44,7 +44,7 @@ public sealed class CiudadesControllerTests
     }
 
     [Fact]
-    public async Task GetCiudades_SinCoincidencias_DevuelveListaVacia()
+    public async Task GetCiudades_SinCoincidencias_Devuelve204()
     {
         await using var db = TestDb.Create();
         Seed(db);
@@ -54,9 +54,7 @@ public sealed class CiudadesControllerTests
 
         var result = await controller.GetCiudades(999, null, CancellationToken.None);
 
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var items = Assert.IsAssignableFrom<IReadOnlyList<CiudadDto>>(ok.Value);
-        Assert.Empty(items);
+        Assert.IsType<NoContentResult>(result);
     }
 
     private static CiudadesController CreateController(AppDbContext db)

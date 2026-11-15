@@ -186,8 +186,8 @@ URL. Sin ellos, `GET /api/usuarios` devuelve todos los registros como antes.
 Cuando se paginan, la respuesta sigue siendo un arreglo y se agrega el header
 `X-Total-Count` con el total de registros.
 
-Con `?id=` la respuesta es un **objeto** (o 404 si no existe); sin `?id` es un
-**arreglo**, por lo que los clientes actuales que consumen
+Con `?id=` la respuesta es un **objeto** (o 204 si no existe); sin `?id` es un
+**arreglo** (204 si no hay registros), por lo que los clientes actuales que consumen
 `GET /api/usuarios` no se ven afectados.
 
 > En Swagger solo se muestra el campo opcional `id`. Los parametros `page` y
@@ -209,14 +209,18 @@ Los errores usan `application/problem+json` e incluyen:
 | `TOKEN_MISSING` / `TOKEN_INVALID` / `TOKEN_EXPIRED` / `TOKEN_MALFORMED` | 401 | Falta el access token, es invalido, expiro o tiene formato incorrecto. |
 | `FORBIDDEN_ROLE` | 403 | El token es valido pero no tiene el rol requerido (por ejemplo admin). |
 | `VALIDATION_ERROR` | 400 | El cuerpo o los parametros no cumplen las validaciones. |
-| `NOT_FOUND` | 404 | La ruta o el recurso solicitado no existe. |
-| `CONFLICT` | 409 | Los datos entran en conflicto con registros existentes. |
+| `RESOURCE_NOT_FOUND` | 400 | El recurso no existe en una operacion de escritura (POST/PUT/PATCH/DELETE). |
+| `ENDPOINT_NOT_FOUND` | 404 | La ruta solicitada no existe. Verifique la URL base y el despliegue. |
+| `CONFLICT` | 400 | Datos duplicados o en conflicto con registros existentes. |
+| `BAD_REQUEST` | 400 | Tipo, formato o valor invalido en la solicitud. |
 | `RATE_LIMITED` | 429 | Se supero el limite de solicitudes. |
 | `SERVICE_UNAVAILABLE` | 503 | La base de datos no esta disponible. |
 | `INTERNAL_ERROR` | 500 | Error inesperado; siempre devuelve JSON y no expone detalles internos. |
 
-Todos los errores quedan registrados en los logs. Los problemas de base de datos
-y los timeouts se devuelven como `503` o `504` en lugar de `500`.
+Las respuestas exitosas con datos usan `200`; las exitosas sin datos usan `204`.
+Los codigos `401`, `402` y `403` conservan su significado. El resto de 4xx se
+normaliza a `400`. Todos los errores quedan registrados en los logs. Los problemas
+de base de datos y los timeouts se devuelven como `503` o `504` en lugar de `500`.
 
 ## 7. Base de datos y migraciones
 
@@ -362,8 +366,9 @@ con JSON; un `500` indica un error no controlado y tambien incluye JSON con
 - Las rutas, los payloads y los nombres de campos JSON se mantuvieron.
 - Los endpoints de asignar/resetear contrasena ahora exigen rol admin. Si no
   configura `Security__AdminApiKey`, la key principal sigue siendo admin.
-- Los codigos de error ahora son correctos (`404` cuando no existe, `409` cuando
-  hay conflicto) y el cuerpo incluye `codigo`, `mensaje` y `traceId`.
+- `404` queda reservado para rutas inexistentes; un recurso inexistente en una
+  operacion de escritura devuelve `400` y un GET sin resultados devuelve `204`.
+  El cuerpo de error incluye `codigo`, `mensaje` y `traceId`.
 - Swagger queda apagado en produccion por defecto. Active
   `Swagger__Enabled=true` solo si lo necesita.
 - Cuando Swagger esta activo, no expone las definiciones de los DTOs: solo

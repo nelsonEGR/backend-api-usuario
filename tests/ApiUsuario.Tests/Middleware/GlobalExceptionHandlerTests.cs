@@ -11,28 +11,39 @@ namespace ApiUsuario.Tests.Middleware;
 public sealed class GlobalExceptionHandlerTests
 {
     [Fact]
-    public async Task TryHandleAsync_NotFoundException_DevuelveProblemJson404()
+    public async Task TryHandleAsync_NotFoundExceptionEnGet_Devuelve204SinCuerpo()
     {
         var (handled, status, contentType, body) = await HandleAsync(
             new NotFoundException("No existe el usuario."));
 
         Assert.True(handled);
-        Assert.Equal(StatusCodes.Status404NotFound, status);
+        Assert.Equal(StatusCodes.Status204NoContent, status);
+        Assert.Equal(string.Empty, contentType);
+        Assert.Equal(string.Empty, body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_NotFoundExceptionEnPost_DevuelveProblemJson400()
+    {
+        var (handled, status, contentType, body) = await HandleAsync(
+            new NotFoundException("No existe el usuario."),
+            HttpMethods.Post);
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status400BadRequest, status);
         Assert.Contains("application/problem+json", contentType);
-        Assert.Contains("mensaje", body);
-        Assert.Contains("codigo", body);
-        Assert.Contains("NOT_FOUND", body);
+        Assert.Contains("RESOURCE_NOT_FOUND", body);
         Assert.Contains("No existe el usuario.", body);
     }
 
     [Fact]
-    public async Task TryHandleAsync_ConflictException_DevuelveProblemJson409()
+    public async Task TryHandleAsync_ConflictException_DevuelveProblemJson400()
     {
         var (handled, status, _, body) = await HandleAsync(
             new ConflictException("Ya existe un usuario con ese email."));
 
         Assert.True(handled);
-        Assert.Equal(StatusCodes.Status409Conflict, status);
+        Assert.Equal(StatusCodes.Status400BadRequest, status);
         Assert.Contains("CONFLICT", body);
         Assert.Contains("Ya existe un usuario con ese email.", body);
     }
@@ -129,9 +140,11 @@ public sealed class GlobalExceptionHandlerTests
     }
 
     private static async Task<(bool Handled, int Status, string ContentType, string Body)> HandleAsync(
-        Exception exception)
+        Exception exception,
+        string method = "GET")
     {
         var context = new DefaultHttpContext();
+        context.Request.Method = method;
         context.Response.Body = new MemoryStream();
 
         var handler = CreateHandler();
