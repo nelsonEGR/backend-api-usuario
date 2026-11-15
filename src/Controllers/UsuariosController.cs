@@ -94,21 +94,6 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
         return NoContent();
     }
 
-    /// <summary>Elimina un usuario y su detalle asociado.</summary>
-    /// <param name="id">Identificador del usuario.</param>
-    /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpDelete("{id}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> DeleteUsuario(
-        int id,
-        CancellationToken cancellationToken)
-    {
-        await usuarioService.DeleteAsync(id, cancellationToken);
-
-        return Ok(new { mensaje = $"El usuario con ID {id} fue eliminado correctamente." });
-    }
-
     /// <summary>Activa la cuenta de un usuario inactivo.</summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>

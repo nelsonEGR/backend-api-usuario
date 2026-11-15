@@ -13,8 +13,6 @@ public interface IUsuarioService
 
     Task UpdateAsync(int id, UsuarioUpdateDto dto, CancellationToken cancellationToken);
 
-    Task DeleteAsync(int id, CancellationToken cancellationToken);
-
     Task<UsuarioDto> ActivateAsync(int id, CancellationToken cancellationToken);
 
     Task<UsuarioDto> DeactivateAsync(int id, CancellationToken cancellationToken);

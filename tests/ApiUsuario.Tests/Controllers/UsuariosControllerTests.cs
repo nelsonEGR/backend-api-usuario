@@ -100,21 +100,6 @@ public sealed class UsuariosControllerTests
     }
 
     [Fact]
-    public async Task DeleteUsuario_Activo_LanzaConflicto()
-    {
-        await using var db = TestDb.Create();
-        var usuario = NewUser(1, "activo@example.com");
-        usuario.Estado = 1;
-        db.Usuarios.Add(usuario);
-        await db.SaveChangesAsync();
-
-        var controller = CreateController(db);
-
-        await Assert.ThrowsAsync<ConflictException>(() =>
-            controller.DeleteUsuario(1, CancellationToken.None));
-    }
-
-    [Fact]
     public async Task ActivarUsuario_Inactivo_DevuelveOk()
     {
         await using var db = TestDb.Create();

@@ -171,7 +171,6 @@ cabecera `X-API-KEY`. Solo `/`, `/health` y Swagger son anonimos;
 | GET | `/api/usuarios/{id}` | Consulta un usuario. |
 | POST | `/api/usuarios` | Crea un usuario (nace inactivo). |
 | PUT | `/api/usuarios/{id}` | Actualiza datos del usuario. |
-| DELETE | `/api/usuarios/{id}` | Elimina un usuario inactivo. |
 | PATCH | `/api/usuarios/{id}/activar` | Activa la cuenta. |
 | PATCH | `/api/usuarios/{id}/desactivar` | Desactiva la cuenta. |
 | POST | `/api/UsuarioDetalles/asignar-password` | Asigna contrasena inicial (admin). |
@@ -209,7 +208,7 @@ Los errores usan `application/problem+json` e incluyen:
 | `TOKEN_MISSING` / `TOKEN_INVALID` / `TOKEN_EXPIRED` / `TOKEN_MALFORMED` | 401 | Falta el access token, es invalido, expiro o tiene formato incorrecto. |
 | `FORBIDDEN_ROLE` | 403 | El token es valido pero no tiene el rol requerido (por ejemplo admin). |
 | `VALIDATION_ERROR` | 400 | El cuerpo o los parametros no cumplen las validaciones. |
-| `RESOURCE_NOT_FOUND` | 400 | El recurso no existe en una operacion de escritura (POST/PUT/PATCH/DELETE). |
+| `RESOURCE_NOT_FOUND` | 400 | El recurso no existe en una operacion de escritura (POST/PUT/PATCH). |
 | `ENDPOINT_NOT_FOUND` | 404 | La ruta solicitada no existe. Verifique la URL base y el despliegue. |
 | `CONFLICT` | 400 | Datos duplicados o en conflicto con registros existentes. |
 | `BAD_REQUEST` | 400 | Tipo, formato o valor invalido en la solicitud. |

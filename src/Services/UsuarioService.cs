@@ -140,37 +140,6 @@ public sealed class UsuarioService(AppDbContext db) : IUsuarioService
         }
     }
 
-    public async Task DeleteAsync(int id, CancellationToken cancellationToken)
-    {
-        var usuario = await db.Usuarios
-            .FirstOrDefaultAsync(u => u.IdUsuario == id, cancellationToken)
-            ?? throw new NotFoundException($"El usuario con ID {id} no existe.");
-
-        if (usuario.Estado == 1)
-        {
-            throw new ConflictException("El usuario se encuentra activo y no puede ser eliminado.");
-        }
-
-        var detalle = await db.UsuarioDetalles
-            .FirstOrDefaultAsync(d => d.IdUsuario == id, cancellationToken);
-
-        if (detalle is not null)
-        {
-            db.UsuarioDetalles.Remove(detalle);
-        }
-
-        db.Usuarios.Remove(usuario);
-
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            throw new ConflictException("No fue posible eliminar el usuario porque tiene registros relacionados.");
-        }
-    }
-
     public async Task<UsuarioDto> ActivateAsync(int id, CancellationToken cancellationToken)
     {
         var usuario = await db.Usuarios
