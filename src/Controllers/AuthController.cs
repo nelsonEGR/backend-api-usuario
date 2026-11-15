@@ -21,12 +21,7 @@ public sealed class AuthController(
 {
     /// <summary>Genera un access token JWT generico.</summary>
     /// <remarks>
-    /// No requiere body. Envie la API key en la cabecera 'X-API-KEY'; debe ser
-    /// el valor configurado en 'Security:ApiKey' (o la variable de entorno
-    /// 'API_KEY', rol client) o en 'Security:AdminApiKey' (o 'ADMIN_API_KEY',
-    /// rol admin). El token devuelto debe usarse en el resto de endpoints como
-    /// 'Authorization: Bearer {accessToken}'. La API key tambien debe seguir
-    /// enviandose en 'X-API-KEY' en cada peticion protegida.
+    /// No requiere body. Envie la API key en la cabecera 'X-API-KEY';
     /// </remarks>
     [HttpPost("token")]
     [AllowAnonymous]

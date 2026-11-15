@@ -14,8 +14,7 @@ public sealed class DepartamentosController(IDepartamentoService departamentoSer
 {
     /// <summary>Lista departamentos o consulta uno por ID.</summary>
     /// <remarks>
-    /// Sin parametros devuelve todos los departamentos. Con 'id' devuelve uno
-    /// solo o 204 si no existe.
+    /// Sin parametros devuelve todos los departamentos.
     /// </remarks>
     /// <param name="id">Identificador del departamento (opcional).</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>

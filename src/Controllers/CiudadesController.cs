@@ -13,8 +13,7 @@ public sealed class CiudadesController(ICiudadService ciudadService) : Controlle
 {
     /// <summary>Lista ciudades, opcionalmente filtradas por ciudad o departamento.</summary>
     /// <remarks>
-    /// Sin filtros devuelve todas las ciudades. Si los filtros no coinciden con
-    /// ningun registro, devuelve 204 sin cuerpo.
+    /// Sin filtros devuelve todas las ciudades.
     /// </remarks>
     /// <param name="idCiudad">Filtra por identificador de ciudad (opcional).</param>
     /// <param name="idDepartamento">Filtra por identificador de departamento (opcional).</param>
