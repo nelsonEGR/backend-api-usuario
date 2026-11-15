@@ -1,8 +1,10 @@
 using System.Text;
+using System.Text.Json;
 using ApiUsuario.Common.Exceptions;
 using ApiUsuario.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
+using Npgsql;
 
 namespace ApiUsuario.Tests.Middleware;
 
@@ -18,6 +20,8 @@ public sealed class GlobalExceptionHandlerTests
         Assert.Equal(StatusCodes.Status404NotFound, status);
         Assert.Contains("application/problem+json", contentType);
         Assert.Contains("mensaje", body);
+        Assert.Contains("codigo", body);
+        Assert.Contains("NOT_FOUND", body);
         Assert.Contains("No existe el usuario.", body);
     }
 
@@ -29,7 +33,66 @@ public sealed class GlobalExceptionHandlerTests
 
         Assert.True(handled);
         Assert.Equal(StatusCodes.Status409Conflict, status);
+        Assert.Contains("CONFLICT", body);
         Assert.Contains("Ya existe un usuario con ese email.", body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ForbiddenException_DevuelveProblemJson403()
+    {
+        var (handled, status, _, body) = await HandleAsync(
+            new ForbiddenException("No tiene permisos."));
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status403Forbidden, status);
+        Assert.Contains("FORBIDDEN", body);
+        Assert.Contains("No tiene permisos.", body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_JsonInvalido_DevuelveProblemJson400()
+    {
+        var (handled, status, _, body) = await HandleAsync(new JsonException("JSON roto"));
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status400BadRequest, status);
+        Assert.Contains("BAD_REQUEST", body);
+        Assert.DoesNotContain("JSON roto", body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_Timeout_DevuelveProblemJson504()
+    {
+        var (handled, status, _, body) = await HandleAsync(new TimeoutException());
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status504GatewayTimeout, status);
+        Assert.Contains("GATEWAY_TIMEOUT", body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_BaseDeDatosNoDisponible_DevuelveProblemJson503()
+    {
+        var (handled, status, _, body) = await HandleAsync(
+            new NpgsqlException("connection refused"));
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, status);
+        Assert.Contains("SERVICE_UNAVAILABLE", body);
+        Assert.DoesNotContain("connection refused", body);
+    }
+
+    [Fact]
+    public async Task TryHandleAsync_ExcepcionEnvueltaDeBaseDeDatos_DevuelveProblemJson503()
+    {
+        var (handled, status, _, body) = await HandleAsync(
+            new InvalidOperationException(
+                "error al ejecutar la consulta",
+                new NpgsqlException("connection refused")));
+
+        Assert.True(handled);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, status);
+        Assert.Contains("SERVICE_UNAVAILABLE", body);
     }
 
     [Fact]
@@ -40,6 +103,7 @@ public sealed class GlobalExceptionHandlerTests
 
         Assert.True(handled);
         Assert.Equal(StatusCodes.Status500InternalServerError, status);
+        Assert.Contains("INTERNAL_ERROR", body);
         Assert.DoesNotContain("Detalle interno sensible.", body);
     }
 

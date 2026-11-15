@@ -2,6 +2,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.RateLimiting;
+using ApiUsuario.Common.Errors;
+using ApiUsuario.Common.Http;
 using ApiUsuario.Configuration;
 using ApiUsuario.Data;
 using ApiUsuario.HealthChecks;
@@ -12,6 +14,7 @@ using ApiUsuario.Swagger;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -93,6 +96,17 @@ public static class ServiceCollectionExtensions
                         .SelectMany(messages => messages)
                         .FirstOrDefault() ?? "La solicitud contiene datos invalidos.";
 
+                    var logger = context.HttpContext.RequestServices
+                        .GetRequiredService<ILoggerFactory>()
+                        .CreateLogger("ApiValidation");
+
+                    logger.LogWarning(
+                        "Error de validacion ({Code}) en {Method} {Path}: {Detail}",
+                        ErrorCodes.ValidationError,
+                        context.HttpContext.Request.Method,
+                        context.HttpContext.Request.Path,
+                        detail);
+
                     var problem = new ValidationProblemDetails(errors)
                     {
                         Status = StatusCodes.Status400BadRequest,
@@ -100,7 +114,10 @@ public static class ServiceCollectionExtensions
                         Detail = detail,
                         Instance = context.HttpContext.Request.Path
                     };
+                    problem.Extensions["codigo"] = ErrorCodes.ValidationError;
                     problem.Extensions["mensaje"] = detail;
+                    problem.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+                    problem.Extensions["errores"] = errors;
 
                     return new BadRequestObjectResult(problem)
                     {
@@ -208,21 +225,23 @@ public static class ServiceCollectionExtensions
                 }
 
                 const string detail = "Demasiadas solicitudes. Intente nuevamente en unos segundos.";
-                context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
 
-                var problem = new ProblemDetails
-                {
-                    Status = StatusCodes.Status429TooManyRequests,
-                    Title = "Demasiadas solicitudes",
-                    Detail = detail,
-                    Instance = context.HttpContext.Request.Path
-                };
-                problem.Extensions["mensaje"] = detail;
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("RateLimiting");
 
-                await context.HttpContext.Response.WriteAsJsonAsync(
-                    problem,
-                    options: null,
-                    contentType: "application/problem+json",
+                logger.LogWarning(
+                    "Limite de solicitudes excedido ({Code}) en {Method} {Path}",
+                    ErrorCodes.RateLimited,
+                    context.HttpContext.Request.Method,
+                    context.HttpContext.Request.Path);
+
+                await ProblemResponse.WriteAsync(
+                    context.HttpContext,
+                    StatusCodes.Status429TooManyRequests,
+                    ErrorCodes.RateLimited,
+                    "Demasiadas solicitudes",
+                    detail,
                     cancellationToken: cancellationToken);
             };
         });
@@ -257,7 +276,30 @@ public static class ServiceCollectionExtensions
                     NameClaimType = ClaimTypes.Name,
                     RoleClaimType = ClaimTypes.Role
                 };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        var (code, detail) = AuthFailureMessages.Describe(context.Exception);
+                        AuthFailureMessages.Set(context.HttpContext, code, detail);
+
+                        var logger = context.HttpContext.RequestServices
+                            .GetRequiredService<ILoggerFactory>()
+                            .CreateLogger("JwtAuthentication");
+
+                        logger.LogWarning(
+                            "Access token rechazado ({Code}) en {Method} {Path}",
+                            code,
+                            context.Request.Method,
+                            context.Request.Path);
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
+
+        services.AddSingleton<IAuthorizationMiddlewareResultHandler, JsonAuthorizationResultHandler>();
 
         services.AddAuthorization(options =>
         {
@@ -359,9 +401,9 @@ public static class ServiceCollectionExtensions
                 Version = "v1",
                 Description =
                     "Gestion de usuarios, ubicacion y contrasenas. " +
-                    "Obtenga un access token en POST /api/auth/token (sin headers, " +
-                    "usando la API key como clientSecret). Las rutas protegidas " +
-                    "exigen Authorization: Bearer {token}."
+                    "Obtenga un access token en POST /api/auth/token enviando la " +
+                    "API key en la cabecera X-API-KEY. Todas las rutas protegidas " +
+                    "exigen Authorization: Bearer {token} y la cabecera X-API-KEY."
             });
 
             options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -374,6 +416,17 @@ public static class ServiceCollectionExtensions
                 Type = SecuritySchemeType.Http,
                 Scheme = "bearer",
                 BearerFormat = "JWT"
+            });
+
+            options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+            {
+                Description =
+                    "API key configurada en el servidor (Security:ApiKey o la " +
+                    "variable de entorno API_KEY). Se envia en la cabecera " +
+                    "X-API-KEY en todas las peticiones, incluido el login.",
+                Name = ApiKeyDefaults.HeaderName,
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.ApiKey
             });
 
             options.OperationFilter<SecurityRequirementsOperationFilter>();

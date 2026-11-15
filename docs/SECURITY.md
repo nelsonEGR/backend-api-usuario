@@ -22,14 +22,18 @@ Pasos:
    ```
 
 2. Configurar en Render:
-   - `Security__ApiKey` para clientes.
-   - `Security__AdminApiKey` para operaciones administrativas.
+   - `Security__ApiKey` (o `API_KEY`) para clientes.
+   - `Security__AdminApiKey` (o `ADMIN_API_KEY`) para operaciones administrativas.
 3. Actualizar el frontend/cliente con la nueva key.
-4. Retirar la variable antigua `API_KEY` cuando ya no se use como respaldo.
+4. Redesplegar y verificar que las rutas protegidas siguen respondiendo `200`.
 
-La API key se usa solo como `clientSecret` en el login generico
-(`POST /api/auth/token`) para obtener el `access_token`. Las demas rutas
-protegidas exigen unicamente `Authorization: Bearer {access_token}`.
+La API key se envia en la cabecera `X-API-KEY` tanto en el login generico
+(`POST /api/auth/token`) como en todas las rutas protegidas, junto con
+`Authorization: Bearer {access_token}`. Esta doble validacion (token + API key)
+aplica a todos los endpoints salvo `/`, `/health` y Swagger.
+
+Si ya existia la variable `API_KEY`, puede conservarla: la aplicacion la usa
+como respaldo cuando `Security__ApiKey` no esta definida.
 
 En **Development** se puede desactivar toda la seguridad con
 `Security__RequireApiKey=false` (no se exige token ni API key). En cualquier otro

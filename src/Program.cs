@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using ApiUsuario.Common.Http;
 using ApiUsuario.Configuration;
 using ApiUsuario.Extensions;
 using ApiUsuario.Logging;
@@ -71,7 +72,7 @@ if (!app.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(securityOption
 app.Logger.LogInformation(
     "Seguridad: {Estado}",
     securityOptions.IsApiKeyRequired()
-        ? "access token obligatorio en rutas protegidas; API key requerida como clientSecret en /api/auth/token"
+        ? "access token obligatorio en rutas protegidas; API key requerida en la cabecera X-API-KEY"
         : "desactivada en Development (sin token ni API key)");
 
 // Render termina TLS y envia X-Forwarded-For / X-Forwarded-Proto.
@@ -102,6 +103,36 @@ app.Use(async (context, next) =>
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
+app.UseStatusCodePages(async statusCodeContext =>
+{
+    var context = statusCodeContext.HttpContext;
+    var response = context.Response;
+
+    if (response.HasStarted)
+    {
+        return;
+    }
+
+    var (code, title, detail) = StatusCodeProblemCatalog.Describe(response.StatusCode);
+    var statusCode = ClientErrorStatus.Normalize(response.StatusCode);
+    var logLevel = statusCode >= 500 ? LogLevel.Error : LogLevel.Warning;
+
+    app.Logger.Log(
+        logLevel,
+        "HTTP {StatusCode} ({Code}) en {Method} {Path}: {Detail}",
+        statusCode,
+        code,
+        context.Request.Method,
+        context.Request.Path,
+        detail);
+
+    await ProblemResponse.WriteAsync(
+        context,
+        statusCode,
+        code,
+        title,
+        detail);
+});
 app.UseMiddleware<SecurityHeadersMiddleware>();
 
 if (securityOptions.UseHstsEnabled(app.Environment))
@@ -126,6 +157,7 @@ if (swaggerOptions.IsEnabled(app.Environment))
 app.UseRouting();
 app.UseCors();
 app.UseRateLimiter();
+app.UseMiddleware<ApiKeyMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 

@@ -4,7 +4,6 @@ using ApiUsuario.Dtos;
 using ApiUsuario.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
@@ -23,29 +22,22 @@ public sealed class AuthController(
 {
     /// <summary>Genera un access token JWT generico.</summary>
     /// <remarks>
-    /// Body de ejemplo:
-    ///
-    ///     { "clientSecret": "TU_API_KEY" }
-    ///
-    /// No requiere headers de autenticacion. 'clientSecret' debe ser el valor
-    /// configurado en 'Security:ApiKey' (rol client) o en
-    /// 'Security:AdminApiKey' (rol admin). El token devuelto debe usarse en el
-    /// resto de endpoints como 'Authorization: Bearer {accessToken}'; no hace
-    /// falta enviar la API key.
+    /// No requiere body. Envie la API key en la cabecera 'X-API-KEY'; debe ser
+    /// el valor configurado en 'Security:ApiKey' (o la variable de entorno
+    /// 'API_KEY', rol client) o en 'Security:AdminApiKey' (o 'ADMIN_API_KEY',
+    /// rol admin). El token devuelto debe usarse en el resto de endpoints como
+    /// 'Authorization: Bearer {accessToken}'. La API key tambien debe seguir
+    /// enviandose en 'X-API-KEY' en cada peticion protegida.
     /// </remarks>
-    /// <param name="request">Credenciales del cliente de servicio.</param>
     [HttpPost("token")]
     [AllowAnonymous]
     [EnableRateLimiting("sensitive")]
     [ProducesResponseType(typeof(TokenResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
-    public ActionResult<TokenResponseDto> CreateToken(
-        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] TokenRequestDto? request)
+    public ActionResult<TokenResponseDto> CreateToken()
     {
-        var security = securityOptions.Value;
-        var isAdmin = Authenticate(request?.ClientSecret, security);
+        var isAdmin = ResolveIsAdmin(securityOptions.Value);
         var token = tokenService.CreateAccessToken(isAdmin);
 
         return Ok(new TokenResponseDto
@@ -57,7 +49,7 @@ public sealed class AuthController(
         });
     }
 
-    private static bool Authenticate(string? providedSecret, SecurityOptions security)
+    private bool ResolveIsAdmin(SecurityOptions security)
     {
         // En desarrollo se puede desactivar la API key; en ese caso se mantiene
         // el mismo comportamiento que el handler anterior (acceso administrativo).
@@ -66,18 +58,12 @@ public sealed class AuthController(
             return true;
         }
 
-        if (SecretComparer.Matches(security.AdminApiKey, providedSecret))
+        if (HttpContext.Items.TryGetValue(ApiKeyDefaults.IsAdminItemKey, out var value)
+            && value is bool isAdmin)
         {
-            return true;
+            return isAdmin;
         }
 
-        if (SecretComparer.Matches(security.ApiKey, providedSecret))
-        {
-            // Compatibilidad: si no hay llave administrativa separada, la
-            // principal conserva permisos de administracion.
-            return string.IsNullOrWhiteSpace(security.AdminApiKey);
-        }
-
-        throw new UnauthorizedException("Credenciales invalidas. Verifique el clientSecret.");
+        throw new UnauthorizedException("Falta la cabecera X-API-KEY o su valor no es valido.");
     }
 }

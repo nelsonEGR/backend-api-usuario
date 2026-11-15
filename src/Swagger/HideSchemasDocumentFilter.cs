@@ -7,13 +7,9 @@ namespace ApiUsuario.Swagger;
 /// Elimina las definiciones de modelos del documento OpenAPI para no exponer
 /// la estructura interna de los DTOs. Swagger conserva rutas, metodos y
 /// parametros, que es lo necesario para generar las URLs/curl.
-/// El login generico es la excepcion: su body se documenta para que se pueda
-/// probar desde Swagger.
 /// </summary>
 public sealed class HideSchemasDocumentFilter : IDocumentFilter
 {
-    private const string TokenPath = "/api/auth/token";
-
     public void Apply(OpenApiDocument swaggerDoc, DocumentFilterContext context)
     {
         swaggerDoc.Components ??= new OpenApiComponents();
@@ -23,45 +19,10 @@ public sealed class HideSchemasDocumentFilter : IDocumentFilter
         {
             foreach (var operation in path.Value.Operations.Values)
             {
-                if (path.Key.Equals(TokenPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    ReplaceTokenRequestSchema(operation);
-                }
-                else
-                {
-                    ReplaceRequestSchemas(operation);
-                }
-
+                ReplaceRequestSchemas(operation);
                 ReplaceResponseSchemas(operation);
                 ReplaceParameterSchemas(operation);
             }
-        }
-    }
-
-    private static void ReplaceTokenRequestSchema(OpenApiOperation operation)
-    {
-        if (operation.RequestBody is null)
-        {
-            return;
-        }
-
-        var schema = new OpenApiSchema
-        {
-            Type = "object",
-            Required = new HashSet<string> { "clientSecret" },
-            Properties = new Dictionary<string, OpenApiSchema>
-            {
-                ["clientSecret"] = new OpenApiSchema
-                {
-                    Type = "string",
-                    Description = "API key configurada en el servidor (Security:ApiKey o Security:AdminApiKey)."
-                }
-            }
-        };
-
-        foreach (var mediaType in operation.RequestBody.Content.Values)
-        {
-            mediaType.Schema = schema;
         }
     }
 

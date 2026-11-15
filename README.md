@@ -49,8 +49,8 @@ Flujo de una peticion:
 
 ```
 HTTP -> ForwardedHeaders -> ExceptionHandler -> SecurityHeaders
-     -> CORS -> RateLimiter -> Authentication (API key) -> Authorization
-     -> Controller -> Service -> EF Core -> PostgreSQL
+     -> CORS -> RateLimiter -> API key (X-API-KEY) -> Authentication (JWT)
+     -> Authorization -> Controller -> Service -> EF Core -> PostgreSQL
 ```
 
 ## 3. Requisitos
@@ -68,7 +68,7 @@ inyecta por variables de entorno, igual en local y en produccion.
 |---|---|---|
 | `ConnectionStrings__DefaultConnection` | Si* | Cadena de conexion Npgsql. |
 | `DATABASE_URL` | Alternativa | URI `postgres://usuario:password@host/db`; se convierte automaticamente. |
-| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key usada como `clientSecret` del login generico. |
+| `Security__ApiKey` (o `API_KEY`) | Si en produccion | API key enviada en la cabecera `X-API-KEY` (login y rutas protegidas). |
 | `Security__AdminApiKey` (o `ADMIN_API_KEY`) | Recomendada | API key administrativa (rol `admin`). |
 | `Security__RequireApiKey` | No | En Development, `false` desactiva token y API key. En produccion siempre se exige. |
 | `Security__UseHsts` | No | Activa HSTS. Por defecto `true` en Production. |
@@ -90,13 +90,18 @@ mensaje claro. Es intencional: evita arrancar sin base de datos.
 
 ### Login generico y access token
 
-1. `POST /api/auth/token` sin headers, con `clientSecret` (la API key).
+1. `POST /api/auth/token` enviando la API key en la cabecera `X-API-KEY` (sin body).
    Devuelve `accessToken`, `tokenType`, `expiresIn` y `expiresAt`.
-2. En el resto de rutas protegidas envie solo:
+2. En el resto de rutas protegidas envie el token **y** la API key:
 
    ```
    Authorization: Bearer <accessToken>
+   X-API-KEY: <API key>
    ```
+
+La API key se valida contra `Security__ApiKey` o, si no existe, contra la
+variable de entorno `API_KEY`. La doble validacion (token + API key) aplica a
+todas las rutas protegidas.
 
 Roles:
 
@@ -110,8 +115,8 @@ El `access_token` expira en 5 minutos por defecto (`Jwt__ExpiresMinutes`). Al
 expirar, vuelva a ejecutar el login generico: no hay refresh token todavia.
 
 En **Development** la seguridad esta desactivada por defecto
-(`Security:RequireApiKey=false`): no se exige `access_token` ni validacion de
-`clientSecret`. Para probar la seguridad en local, configure
+(`Security:RequireApiKey=false`): no se exige `access_token` ni la cabecera
+`X-API-KEY`. Para probar la seguridad en local, configure
 `Security:RequireApiKey=true`.
 
 ## 5. Ejecucion local
@@ -135,7 +140,7 @@ dotnet run
 Swagger: `http://localhost:5291/swagger`
 
 En **Development** la seguridad queda desactivada por defecto: no se exige
-`access_token` ni validacion de `clientSecret`. Para probar la seguridad en local
+`access_token` ni la cabecera `X-API-KEY`. Para probar la seguridad en local
 configure `Security:RequireApiKey=true` (por user-secrets o `Security__RequireApiKey=true`).
 En produccion la seguridad siempre esta activa.
 
@@ -151,12 +156,13 @@ dotnet run --project src/api.csproj
 
 ## 6. Endpoints
 
-Todas las rutas protegidas exigen `Authorization: Bearer`. Solo `/`, `/health`,
-`/api/auth/token` y Swagger son anonimos.
+Todas las rutas protegidas exigen `Authorization: Bearer {accessToken}` y la
+cabecera `X-API-KEY`. Solo `/`, `/health` y Swagger son anonimos;
+`/api/auth/token` exige `X-API-KEY` pero no token.
 
 | Metodo | Ruta | Descripcion |
 |---|---|---|
-| POST | `/api/auth/token` | Login generico: recibe solo `clientSecret` y devuelve el `accessToken`. |
+| POST | `/api/auth/token` | Login generico: recibe la API key por `X-API-KEY` y devuelve el `accessToken`. |
 | GET | `/` | Verificacion simple de que el proceso responde. |
 | GET | `/health` | Estado del proceso, conexion a PostgreSQL y esquema (tablas/columnas). Usar en Render. |
 | GET | `/api/usuarios` | Lista todos los usuarios (comportamiento historico). |
@@ -188,8 +194,29 @@ Con `?id=` la respuesta es un **objeto** (o 404 si no existe); sin `?id` es un
 > `pageSize` se mantienen ocultos para no saturar el endpoint; para probar la
 > paginacion use la URL `?page=1&pageSize=50` en Postman o Bruno.
 
-Los errores usan `application/problem+json` e incluyen la propiedad `mensaje`
-por compatibilidad con el frontend anterior.
+Los errores usan `application/problem+json` e incluyen:
+
+- `codigo`: identificador estable del error, por ejemplo `API_KEY_MISSING`,
+  `TOKEN_EXPIRED` o `VALIDATION_ERROR`.
+- `mensaje`: explicacion breve del motivo (se conserva por compatibilidad).
+- `traceId`: identificador de la peticion; coincide con `X-Request-Id` y con los
+  logs.
+- `errores`: solo en errores de validacion, con el detalle por campo.
+
+| Codigo | HTTP | Cuando ocurre |
+|---|---|---|
+| `API_KEY_MISSING` / `API_KEY_INVALID` | 401 | Falta `X-API-KEY` o no coincide con la configurada. |
+| `TOKEN_MISSING` / `TOKEN_INVALID` / `TOKEN_EXPIRED` / `TOKEN_MALFORMED` | 401 | Falta el access token, es invalido, expiro o tiene formato incorrecto. |
+| `FORBIDDEN_ROLE` | 403 | El token es valido pero no tiene el rol requerido (por ejemplo admin). |
+| `VALIDATION_ERROR` | 400 | El cuerpo o los parametros no cumplen las validaciones. |
+| `NOT_FOUND` | 404 | La ruta o el recurso solicitado no existe. |
+| `CONFLICT` | 409 | Los datos entran en conflicto con registros existentes. |
+| `RATE_LIMITED` | 429 | Se supero el limite de solicitudes. |
+| `SERVICE_UNAVAILABLE` | 503 | La base de datos no esta disponible. |
+| `INTERNAL_ERROR` | 500 | Error inesperado; siempre devuelve JSON y no expone detalles internos. |
+
+Todos los errores quedan registrados en los logs. Los problemas de base de datos
+y los timeouts se devuelven como `503` o `504` en lugar de `500`.
 
 ## 7. Base de datos y migraciones
 
@@ -268,8 +295,8 @@ Si el servicio de Render **no** usa Docker, configure:
 
    ```
    ConnectionStrings__DefaultConnection=Host=...;Database=neondb;Username=neondb_owner;Password=NUEVA_PASSWORD;SslMode=Require
-   Security__ApiKey=GENERAR_UNA_CLAVE_LARGA
-   Security__AdminApiKey=GENERAR_OTRA_CLAVE_LARGA
+   API_KEY=GENERAR_UNA_CLAVE_LARGA
+   ADMIN_API_KEY=GENERAR_OTRA_CLAVE_LARGA
    Jwt__Key=GENERAR_UNA_CLAVE_DE_AL_MENOS_32_CARACTERES
    Jwt__ExpiresMinutes=5
    Cors__AllowedOrigins__0=https://tu-frontend.com
@@ -278,8 +305,8 @@ Si el servicio de Render **no** usa Docker, configure:
    ASPNETCORE_ENVIRONMENT=Production
    ```
 
-   Si ya tenia `API_KEY` configurada, puede conservarla: la aplicacion la usa
-   como respaldo de `Security__ApiKey`.
+   Tambien se aceptan `Security__ApiKey` y `Security__AdminApiKey`. Si define
+   ambas formas, `Security__ApiKey` tiene prioridad sobre `API_KEY`.
 
 3. Guarde y haga **Manual Deploy -> Clear build cache & deploy**.
 4. Verifique:
@@ -288,8 +315,8 @@ Si el servicio de Render **no** usa Docker, configure:
      ejemplo, una rama vacia de Neon).
    - `https://TU-SERVICIO.onrender.com/` debe responder `"API corriendo"`.
    - Un endpoint protegido sin headers debe responder `401`.
-   - `POST /api/auth/token` con el `clientSecret` correcto debe devolver `accessToken`.
-   - Con `Authorization: Bearer` correcto debe responder `200`.
+   - `POST /api/auth/token` con la cabecera `X-API-KEY` correcta debe devolver `accessToken`.
+   - Con `Authorization: Bearer` y `X-API-KEY` correctos debe responder `200`.
 
 ### Problemas comunes al desplegar
 
@@ -322,11 +349,13 @@ en lugar de dejar que los endpoints fallen con `500`.
 Revise que `ConnectionStrings__DefaultConnection` apunte al proyecto/rama que
 realmente tiene los datos.
 
-**`/health` responde `Healthy` pero un endpoint devuelve `500`**
+**`/health` responde `Healthy` pero un endpoint devuelve `503`**
 
 Puede ser un error de datos o de una columna no contemplada. Revise los logs de
 Render: el manejador global registra la excepcion completa (`Npgsql.PostgresException`)
-sin exponerla al cliente.
+sin exponerla al cliente. Los problemas de base de datos se devuelven como `503`
+con JSON; un `500` indica un error no controlado y tambien incluye JSON con
+`codigo` y `traceId`.
 
 ### Notas de compatibilidad
 
@@ -334,7 +363,7 @@ sin exponerla al cliente.
 - Los endpoints de asignar/resetear contrasena ahora exigen rol admin. Si no
   configura `Security__AdminApiKey`, la key principal sigue siendo admin.
 - Los codigos de error ahora son correctos (`404` cuando no existe, `409` cuando
-  hay conflicto) y el cuerpo incluye `mensaje` para el frontend.
+  hay conflicto) y el cuerpo incluye `codigo`, `mensaje` y `traceId`.
 - Swagger queda apagado en produccion por defecto. Active
   `Swagger__Enabled=true` solo si lo necesita.
 - Cuando Swagger esta activo, no expone las definiciones de los DTOs: solo
@@ -343,6 +372,7 @@ sin exponerla al cliente.
 ## 9. Seguridad
 
 - Sin secretos en el repositorio ni en `appsettings.json`.
+- Doble validacion: `Authorization: Bearer {token}` + cabecera `X-API-KEY`.
 - API key obligatoria por configuracion, no por detectar el proveedor de hosting.
 - Comparacion de API keys en tiempo constante.
 - Endpoints administrativos separados por rol.

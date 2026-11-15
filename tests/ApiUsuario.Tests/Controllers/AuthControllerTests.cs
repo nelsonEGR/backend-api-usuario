@@ -6,6 +6,7 @@ using ApiUsuario.Configuration;
 using ApiUsuario.Controllers;
 using ApiUsuario.Dtos;
 using ApiUsuario.Security;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -17,7 +18,7 @@ public sealed class AuthControllerTests
     private const string Key = "clave-de-prueba-suficientemente-larga-1234567890";
 
     [Fact]
-    public void CreateToken_ConSecretoCliente_DevuelveTokenRolClient()
+    public void CreateToken_ConApiKeyCliente_DevuelveTokenRolClient()
     {
         var controller = CreateController(
             new SecurityOptions
@@ -25,9 +26,10 @@ public sealed class AuthControllerTests
                 ApiKey = "client-key",
                 AdminApiKey = "admin-key",
                 RequireApiKey = true
-            });
+            },
+            isAdmin: false);
 
-        var result = controller.CreateToken(new TokenRequestDto { ClientSecret = "client-key" });
+        var result = controller.CreateToken();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<TokenResponseDto>(ok.Value);
@@ -38,7 +40,7 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public void CreateToken_ConSecretoAdmin_DevuelveTokenRolAdmin()
+    public void CreateToken_ConApiKeyAdmin_DevuelveTokenRolAdmin()
     {
         var controller = CreateController(
             new SecurityOptions
@@ -46,10 +48,10 @@ public sealed class AuthControllerTests
                 ApiKey = "client-key",
                 AdminApiKey = "admin-key",
                 RequireApiKey = true
-            });
+            },
+            isAdmin: true);
 
-        var result = controller.CreateToken(
-            new TokenRequestDto { ClientSecret = "admin-key" });
+        var result = controller.CreateToken();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<TokenResponseDto>(ok.Value);
@@ -58,13 +60,12 @@ public sealed class AuthControllerTests
     }
 
     [Fact]
-    public void CreateToken_ConSecretoInvalido_LanzaUnauthorized()
+    public void CreateToken_SinApiKeyValidadaEnElContexto_LanzaUnauthorized()
     {
         var controller = CreateController(
             new SecurityOptions { ApiKey = "client-key", RequireApiKey = true });
 
-        Assert.Throws<UnauthorizedException>(() =>
-            controller.CreateToken(new TokenRequestDto { ClientSecret = "otro" }));
+        Assert.Throws<UnauthorizedException>(() => controller.CreateToken());
     }
 
     [Fact]
@@ -72,7 +73,7 @@ public sealed class AuthControllerTests
     {
         var controller = CreateController(new SecurityOptions { RequireApiKey = false });
 
-        var result = controller.CreateToken(null);
+        var result = controller.CreateToken();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<TokenResponseDto>(ok.Value);
@@ -80,7 +81,7 @@ public sealed class AuthControllerTests
         Assert.True(Validate(response.AccessToken).IsInRole("admin"));
     }
 
-    private static AuthController CreateController(SecurityOptions security)
+    private static AuthController CreateController(SecurityOptions security, bool? isAdmin = null)
     {
         var tokenService = new JwtTokenService(
             Options.Create(new JwtOptions
@@ -92,7 +93,17 @@ public sealed class AuthControllerTests
             }),
             TimeProvider.System);
 
-        return new AuthController(tokenService, Options.Create(security));
+        var httpContext = new DefaultHttpContext();
+
+        if (isAdmin.HasValue)
+        {
+            httpContext.Items[ApiKeyDefaults.IsAdminItemKey] = isAdmin.Value;
+        }
+
+        return new AuthController(tokenService, Options.Create(security))
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
     }
 
     private static ClaimsPrincipal Validate(string token)

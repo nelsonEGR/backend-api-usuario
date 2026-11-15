@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using ApiUsuario.Common.Exceptions;
 using ApiUsuario.Dtos;
 using ApiUsuario.Services;
@@ -15,7 +15,7 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
 {
     /// <summary>Lista todos los usuarios o consulta uno por '?id'.</summary>
     /// <remarks>
-    /// Con '?id=N' devuelve un usuario (404 si no existe). Sin 'id' devuelve todos.
+    /// Con '?id=N' devuelve un usuario (400 si no existe). Sin 'id' devuelve todos.
     /// Paginacion opcional solo sin 'id': '?page=1&amp;pageSize=50'. En ese caso
     /// la respuesta incluye el header 'X-Total-Count'.
     /// </remarks>
@@ -24,7 +24,6 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
     [HttpGet]
     [ProducesResponseType(typeof(IReadOnlyList<UsuarioDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetUsuarios(
         [FromQuery] int? id,
         CancellationToken cancellationToken)
@@ -42,15 +41,20 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
 
         Response.Headers["X-Total-Count"] = result.Total.ToString(CultureInfo.InvariantCulture);
 
+        if (result.Items.Count == 0)
+        {
+            return NoContent();
+        }
+
         return Ok(result.Items);
     }
 
     /// <summary>Obtiene un usuario por su identificador.</summary>
     /// <param name="id">Identificador del usuario (mayor o igual a 1).</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpGet("{id:int}")]
+    [HttpGet("{id}")]
     [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<UsuarioDto>> GetUsuario(
         int id,
         CancellationToken cancellationToken)
@@ -63,27 +67,24 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
     /// <param name="dto">Datos del usuario a crear.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
     [HttpPost]
-    [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(UsuarioDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<UsuarioDto>> PostUsuario(
         [FromBody] UsuarioCreateDto dto,
         CancellationToken cancellationToken)
     {
         var usuario = await usuarioService.CreateAsync(dto, cancellationToken);
 
-        return CreatedAtAction(nameof(GetUsuario), new { id = usuario.IdUsuario }, usuario);
+        return Ok(usuario);
     }
 
     /// <summary>Actualiza los datos de un usuario existente.</summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="dto">Datos a actualizar.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpPut("{id:int}")]
+    [HttpPut("{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> PutUsuario(
         int id,
         [FromBody] UsuarioUpdateDto dto,
@@ -96,10 +97,9 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
     /// <summary>Elimina un usuario y su detalle asociado.</summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DeleteUsuario(
         int id,
         CancellationToken cancellationToken)
@@ -112,10 +112,9 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
     /// <summary>Activa la cuenta de un usuario inactivo.</summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpPatch("{id:int}/activar")]
+    [HttpPatch("{id}/activar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ActivarUsuario(
         int id,
         CancellationToken cancellationToken)
@@ -128,10 +127,9 @@ public sealed class UsuariosController(IUsuarioService usuarioService) : Control
     /// <summary>Desactiva la cuenta de un usuario activo.</summary>
     /// <param name="id">Identificador del usuario.</param>
     /// <param name="cancellationToken">Token de cancelacion de la peticion.</param>
-    [HttpPatch("{id:int}/desactivar")]
+    [HttpPatch("{id}/desactivar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> DesactivarUsuario(
         int id,
         CancellationToken cancellationToken)

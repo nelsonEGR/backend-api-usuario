@@ -8,14 +8,16 @@ public sealed class SecurityOptions
     public const string SectionName = "Security";
 
     /// <summary>
-    /// API key principal. Se envia como 'clientSecret' en POST /api/auth/token
-    /// para obtener el access token; no se usa como header en el resto de rutas.
+    /// API key principal. Se envia en la cabecera 'X-API-KEY' en todas las
+    /// peticiones (incluido POST /api/auth/token). Si no se configura, se usa
+    /// la variable de entorno 'API_KEY'.
     /// </summary>
     public string? ApiKey { get; set; }
 
     /// <summary>
-    /// API key administrativa opcional. Si no se configura, la ApiKey principal
-    /// se trata como administrativa por compatibilidad.
+    /// API key administrativa opcional. Se envia en la cabecera 'X-API-KEY' y
+    /// emite tokens con rol admin. Si no se configura, la ApiKey principal se
+    /// trata como administrativa por compatibilidad.
     /// </summary>
     public string? AdminApiKey { get; set; }
 
