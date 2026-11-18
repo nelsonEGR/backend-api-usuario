@@ -227,25 +227,32 @@ public static class ServiceCollectionExtensions
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+            if (settings.Enabled)
             {
-                var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+                {
+                    var partitionKey = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
 
-                return RateLimitPartition.GetFixedWindowLimiter(
-                    partitionKey,
-                    _ => new FixedWindowRateLimiterOptions
-                    {
-                        PermitLimit = Math.Max(1, settings.PermitLimit),
-                        Window = TimeSpan.FromSeconds(Math.Max(1, settings.WindowSeconds)),
-                        QueueLimit = 0,
-                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst
-                    });
-            });
+                    return RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey,
+                        _ => new FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = Math.Max(1, settings.PermitLimit),
+                            Window = TimeSpan.FromSeconds(Math.Max(1, settings.WindowSeconds)),
+                            QueueLimit = 0,
+                            QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+                        });
+                });
+            }
 
             options.AddFixedWindowLimiter("sensitive", limiter =>
             {
-                limiter.PermitLimit = Math.Max(1, settings.SensitivePermitLimit);
-                limiter.Window = TimeSpan.FromSeconds(Math.Max(1, settings.SensitiveWindowSeconds));
+                limiter.PermitLimit = settings.Enabled
+                    ? Math.Max(1, settings.SensitivePermitLimit)
+                    : int.MaxValue;
+                limiter.Window = settings.Enabled
+                    ? TimeSpan.FromSeconds(Math.Max(1, settings.SensitiveWindowSeconds))
+                    : TimeSpan.FromSeconds(1);
                 limiter.QueueLimit = 0;
                 limiter.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
             });

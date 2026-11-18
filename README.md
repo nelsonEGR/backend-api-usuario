@@ -79,6 +79,7 @@ inyecta por variables de entorno, igual en local y en produccion.
 | `Cors__AllowedOrigins__0` | Recomendada | Origen permitido, por ejemplo `https://mi-frontend.com`. |
 | `Cors__AllowAnyOrigin` | No | Mantiene compatibilidad con `*`. Recomendado `false` en produccion. |
 | `Swagger__Enabled` | No | Por defecto solo `true` en Development. |
+| `RateLimiting__Enabled` | No | Activa el limite de peticiones (default `false`). |
 | `RateLimiting__PermitLimit` | No | Peticiones por IP y ventana (default 120). |
 | `RateLimiting__WindowSeconds` | No | Ventana en segundos (default 60). |
 | `RateLimiting__SensitivePermitLimit` | No | Limite para endpoints de contrasenas (default 10). |
